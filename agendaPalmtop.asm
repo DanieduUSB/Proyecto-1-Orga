@@ -118,6 +118,7 @@ jr $ra
 #Imprime por la salida estándar el límite superior/inferior de la agenda
 printLimite:
 	sw	$ra,($sp)
+	addiu	$sp,$sp,4
 	
 	li	$a1,23
 	jal	printGuion
@@ -130,6 +131,7 @@ printLimite:
 	
 	jal	printSaltoLinea
 	
+subi	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
 
@@ -423,8 +425,8 @@ jr $ra
 #Utiliza el algoritmo de división no restauradora para dividir el número unsigned de 64 bits $a1:$a0 entre el número unsigned de máximo 32
 # bits $a2. Retorna el cociente en $a0 y el resto en $v1
 div64Bits:
-	li	$t0,64
-	li	$v1,0
+	li	$t0,64 #Contador
+	li	$v1,0  #Resto
 	_div64loop:
 	
 		#Shift a la izquierda de $v1:$a1:$a0
@@ -474,18 +476,20 @@ fechaActual:
 	li	$v0,30
 	syscall #system_time
 	
-	#Se divide el número de 64 bits resultante entre 1000 para convertir de milisegundos a segundos
-	li	$a2,1000
+	#Se divide el número de 64 bits resultante entre 86400000 para convertir de milisegundos a días. Esto nos da el número
+	# de días desde el 1ro de enero de 1970 hasta hoy en $a0
+	li	$a2,86400000
 	jal	div64Bits
 	
-	#Divide el cociente resultante entre 86400 para obtener el número de días desde el 1ro de enero de 1970 hasta hoy
-	divu	$a0,$a0,86400
-	
-	#Divide el número entre 7, obtiene el resto y le suma 3 para obtener el día de la semana
+	#Divide el número entre 7, obtiene el resto y le suma 3 para obtener el día de la semana. El 3 es debido a que al hacer el
+	# módulo se asume que 1ro de enero de 1970 es lunes, pero en realidad es jueves, por lo que hay que arreglar este offset
 	li	$t0,7
 	div	$a0,$t0
 	mfhi	$s4
 	addi	$s4,$s4,3
+	blt	$s4,7,_faContinuar
+	subi	$s4,$s4,7
+	_faContinuar:
 	
 	#Se divide $a0 entre 365 para obtener los años concurridos desde 1970 hasta el año presente
 	div	$t0,$a0,365
@@ -558,7 +562,9 @@ jr	$ra
 
 #Mueve el día actual al día especificado almacenado en $t7, el cual se encuentra en formato L>.
 semSig:
-	move	$a0,$ra
+	sw	$ra,($sp)
+	addi	$sp,$sp,4
+
 	jal	diaAct
 	beq	$t7,0x3e4c,_semSig #Lunes
 	beq	$t7,0x3e4d,sigMar
@@ -594,12 +600,16 @@ semSig:
 		sub	$t1,$t1,$t5
 		add	$s3,$s3,$t1	
 endSemSig:
-move	$ra,$a0
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
 jr	$ra
 
 #Mueve el día actual al día especificado almacenado en $t7, el cual se encuentra en formato <L.
 semPrev:
-	move	$a0,$ra
+	sw	$ra,($sp)
+	addiu	$sp,$sp,4
+	
 	jal	diaAct
 	beq	$t7,0x4c3c,lunPrev #Lunes
 	beq	$t7,0x4d3c,marPrev
@@ -639,7 +649,8 @@ semPrev:
 		sub	$s3,$s3,$t1
 	
 endSemPrev:
-move	$ra,$a0
+subiu	$sp,$sp,4
+lw	$ra,($sp)
 jr	$ra
 
 #Calcula el identificador del día actual y lo almacena en $t5
