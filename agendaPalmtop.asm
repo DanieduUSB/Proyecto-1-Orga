@@ -420,10 +420,14 @@ cargarMeses:
 	
 jr $ra
 
-division64Bits:
+#Utiliza el algoritmo de división no restauradora para dividir el número unsigned de 64 bits $a1:$a0 entre el número unsigned de máximo 32
+# bits $a2. Retorna el cociente en $a0 y el resto en $v1
+div64Bits:
 	li	$t0,64
 	li	$v1,0
-	_d64bucle:
+	_div64loop:
+	
+		#Shift a la izquierda de $v1:$a1:$a0
 		sll	$v1,$v1,1
 		srl	$t1,$a1,31
 		or	$v1,$v1,$t1
@@ -432,23 +436,88 @@ division64Bits:
 		or	$a1,$a1,$t1
 		sll	$a0,$a0,1
 		
+		#Si $v1<0, $v1 = $v1 + $a2 (Resto + divisor)
 		bltz	$v1,_sumar
+		#Si $v1>=0, $v1 = $v1-$a2 (Resto - divisor)
 		subu	$v1,$v1,$a2
-		j	_checkBit	
+		j	_checkBit
 		_sumar:
 		addu	$v1,$v1,$a2
 		
 		_checkBit:
-		bltz	$v1,_bucleContinuar
+		#Si $v1<0, El bit menos significativo del cociente (De $a0) es 0. No se hace nada
+		bltz	$v1,_div64LoopContinuar
+		#Si $v1>=0, El bit menos significativo del cociente (De $a0) es 1. Se hace un or
 		ori	$a0,$a0,1
-		_bucleContinuar:
+		
+		_div64LoopContinuar:
 		subi	$t0,$t0,1
-		beqz	$t0,_d64EndBucle
-	j	_d64bucle
-	_d64EndBucle:
-	bgez	$v1,_d64End
+		#Si $t0 es igual a 0, termina el ciclo
+		beqz	$t0,_div64EndLoop
+	j	_div64loop
+	_div64EndLoop:
+	bgez	$v1,_div64End
+	#Si $v1 < 0, $v1 = $v1 + $a2 (Resto + Divisor) para restaurar el resto
 	addu	$v1,$v1,$a2
-	_d64End:
+	_div64End:
+jr	$ra
+
+#Encuentra el día y fecha actual a partir del syscall 30. Guarda la fecha en los registros $s4-$s7 tal que:
+# $s4 contiene el día de la semana (Un número del 0 al 6 donde 0 es lunes, 1 es martes, .., 6 es domingo)
+# $s5 contiene el número del día
+# $s6 contiene el mes (Un número del 0 al 11 donde 0 es enero, 1 es febrero, .., 11 es diciembre)
+# $s7 contiene el año
+fechaActual:
+	sw	$ra,($sp)
+	addi	$sp,$sp,4
+	
+	li	$v0,30
+	syscall #system_time
+	
+	#Se divide el número de 64 bits resultante entre 1000 para convertir de milisegundos a segundos
+	li	$a2,1000
+	jal	div64Bits
+	
+	#Divide el cociente resultante entre 86400 para obtener el número de días desde el 1ro de enero de 1970 hasta hoy
+	divu	$a0,$a0,86400
+	
+	#Divide el número entre 7, obtiene el resto y le suma 3 para obtener el día de la semana
+	li	$t0,7
+	div	$a0,$t0
+	mfhi	$s4
+	addi	$s4,$s4,3
+	
+	#Se divide $a0 entre 365 para obtener los años concurridos desde 1970 hasta el año presente
+	div	$t0,$a0,365
+	addi	$s7,$t0,1970
+	
+	#Se divide $t0 entre 4 para obtener el número de años bisiestos desde 1970 hasta el año presente
+	div	$t1,$t0,4
+	
+	#Se multiplica $t0 por 365 y se le suma $t1 para obtener el número exacto de días desde el 1ro de enero de 1970 hasta
+	# el 1ro de enero del año actual, se le resta 1 al resultado para obtener el número de días concurridos hasta el 31 de
+	# diciembre del año anterior y se resta este resultado a $a0 para obtener el número de días concurridos este año.
+	mul	$s5,$t0,365
+	add	$s5,$s5,$t1
+	subi	$s5,$s5,1
+	sub	$s5,$a0,$s5
+	
+	#Se itera sobre los meses para buscar el mes actual y obtener el día del mes actual
+	li	$s6,0
+	lw	$t2,meses
+	lb	$t2,1($t2)
+	_faLoop:
+		ble	$s5,$t2,_faEndLoop
+		sub	$s5,$s5,$t2
+		addi	$s6,$s6,1
+		mul	$t1,$s6,4
+		lw	$t2,meses($t1)
+		lb	$t2,1($t2)
+	j	_faLoop
+	_faEndLoop:
+	
+subi	$sp,$sp,4
+lw	$ra,($sp)
 jr	$ra
 
 #Mueve el cursor de la línea actual (el asterisco del menú - $t9) el número de veces indicado en &t8, o hasta que $t9 sea 15
@@ -482,22 +551,6 @@ jr	$ra
 
 main:
 jal	cargarMeses
-
-li	$s3,365
-li	$s4,5
-li	$s5,12
-li	$s6,11
-li	$s7,2026
-
-li	$t9,10
-
-#jal	printMenu
-
-li	$v0,30
-syscall
-
-li	$a2,1000
-
-jal	division64Bits
-
-div	$a0,$a0,86400
+jal	fechaActual
+li	$s3,0
+jal	printMenu
