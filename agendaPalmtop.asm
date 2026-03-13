@@ -7,28 +7,40 @@ dias:		.asciiz	"lun"
 			"sab"
 			"dom"
 enero:		.byte	5
+		.byte	31
 		.asciiz "enero"
 febrero:	.byte	7
+		.byte	28
 		.asciiz "febrero"
 marzo:		.byte	5
+		.byte	31
 		.asciiz "marzo"
 abril:		.byte	5
+		.byte	30
 		.asciiz "abril"
 mayo:		.byte	4
+		.byte	31
 		.asciiz "mayo"
 junio:		.byte	5
+		.byte	30
 		.asciiz "junio"
 julio:		.byte	5
+		.byte	31
 		.asciiz "julio"
 agosto:		.byte	6
+		.byte	31
 		.asciiz "agosto"
 septiembre:	.byte	10
+		.byte	30
 		.asciiz "septiembre"
 octubre:	.byte	7
+		.byte	31
 		.asciiz "octubre"
 noviembre:	.byte	9
+		.byte	30
 		.asciiz "noviembre"
 diciembre:	.byte	9
+		.byte	31
 		.asciiz "diciembre"
 		.align 2
 meses:		.space 48
@@ -121,55 +133,159 @@ printLimite:
 lw	$ra,($sp)
 jr	$ra
 
-#Imprime en una línea de tamaño 22 la fecha especificada formateada. La fecha se lee de los registros $s4 - $s7 tal que:
-# $s4: Número indicador del día de la semana (Número del 0 al 6 donde 0 es lunes, 1 es martes, ..., 6 es domingo)
-# $s5: Día
-# $s6: Número indicador del mes (Número del 0 al 11 donde 0 es enero, 1 es febrero, ..., 11 es diciembre)
-# $s7: Año
+##Imprime en una línea de tamaño 22 la fecha especificada formateada. La fecha se lee de los registros $s4 - $s7 tal que:
+## $s4: Número indicador del día de la semana (Número del 0 al 6 donde 0 es lunes, 1 es martes, ..., 6 es domingo)
+## $s5: Día
+## $s6: Número indicador del mes (Número del 0 al 11 donde 0 es enero, 1 es febrero, ..., 11 es diciembre)
+## $s7: Año
+#printFecha:
+#	sw	$ra,($sp)
+#	addiu	$sp,$sp,4
+#	
+#	mul	$t0,$s4,4
+#	li	$v0,4
+#	la	$a0,dias($t0)
+#	syscall	#print_string
+#	
+#	li	$a1,1
+#	jal	printEspacio
+#	
+#	li	$v0,1
+#	move	$a0,$s5
+#	syscall	#print_int
+#	
+#	li	$a1,1
+#	jal	printEspacio
+#	
+#	mul	$t0,$s6,4
+#	li	$v0,4
+#	lw	$a0,meses($t0)
+#	addiu	$a0,$a0,2
+#	syscall	#print_string
+#	
+#	li	$a1,1
+#	jal	printEspacio
+#	
+#	li	$v0,1
+#	move	$a0,$s7
+#	syscall	#print_int
+#	
+#	li	$a1,10
+#	lw	$t0,meses($t0)
+#	lb	$t0,($t0)
+#	sub	$a1,$a1,$t0
+#	
+#	bge	$s5,10,_pfEspacioFinalFecha
+#	addi	$a1,$a1,1
+#_pfEspacioFinalFecha:
+#	jal	printEspacio
+#	li	$a1,1
+#	
+#subiu	$sp,$sp,4
+#lw	$ra,($sp)
+#jr	$ra
+
+#Imprime la fecha seleccionada en la agenda. La fecha seleccionada se obtiene a partir de los registros $s3-$s7, donde $s3
+# representa el número de días desde el día 0, y los registros $s4-$s7 contienen el día 0.
 printFecha:
 	sw	$ra,($sp)
-	addiu	$sp,$sp,4
+	addi	$sp,$sp,4
 	
-	mul	$t0,$s4,4
-	li	$v0,4
+	#Día de la semana:
+	add	$t0,$s4,$s3
+	li	$t1,7
+	div	$t0,$t1
+	mfhi	$t0
+	bgez	$t0,_pfContinuar
+	add	$t0,$t1,$t0
+	
+	_pfContinuar:
+	mul	$t0,$t0,4
 	la	$a0,dias($t0)
-	syscall	#print_string
-	
-	li	$a1,1
-	jal	printEspacio
-	
-	li	$v0,1
-	move	$a0,$s5
-	syscall	#print_int
-	
-	li	$a1,1
-	jal	printEspacio
-	
-	mul	$t0,$s6,4
 	li	$v0,4
-	lw	$a0,meses($t0)
-	addiu	$a0,$a0,1
 	syscall	#print_string
 	
 	li	$a1,1
 	jal	printEspacio
 	
+	#Mes y día del mes:
+	add	$t0,$s5,$s3 #Carga el valor del día real tomando como referencia el 1ro del mes actual
+	
+	mul	$t1,$s6,4 #Carga el mes actual (0-11) multiplicado por 4, para acceder a la info de la variable 'meses'
+	lw	$t4,meses($t1)
+	lb	$t4,1($t4) #Carga la cantidad de días del mes actual
+	blt	$t0,1,_pfLoopNeg
+	
+	_pfLoop: #Loop si $t0 es positivo
+		ble	$t0,$t4,_pfEndLoop
+		sub	$t0,$t0,$t4
+		addi	$t1,$t1,4
+		blt	$t1,48,_pfContinuarLoop #Si el mes actual no es el 12, continúa con el loop en el mes y año actual, en caso
+					        # contrario, establece el mes como 0 (enero) y se mueve al siguiente año
+		li	$t1,0x0
+		addi	$t3,$t3,1 #Calcula de antemano el cambio de año
+		_pfContinuarLoop:
+		lw	$t4,meses($t1)
+		addi	$t4,$t4,1
+		lb	$t4,($t4)
+		j	_pfLoop
+	
+	_pfLoopNeg: #Loop si $t0 es negativo
+		subi	$t1,$t1,4
+		bgez	$t1,_pfContinuarLoopNeg
+		
+		li	$t1,0x2c
+		subi	$t3,$t3,1
+		_pfContinuarLoopNeg:
+		
+		lw	$t4,meses($t1)
+		addi	$t4,$t4,1
+		lb	$t4,($t4)
+		
+		subi	$t4,$t4,1
+		not	$t4,$t4
+
+		bgt	$t0,$t4,_pfEndLoopNeg
+		sub	$t0,$t0,$t4
+		j	_pfLoopNeg
+	
+	_pfEndLoopNeg:
+	subi	$t4,$t4,1
+	not	$t4,$t4
+	
+	add	$t0,$t4,$t0
+	subi	$t4,$t4,4
+		
+	_pfEndLoop:
+	move	$a0,$t0
 	li	$v0,1
-	move	$a0,$s7
+	syscall #print_int
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	lw	$t1,meses($t1)
+	addi	$a0,$t1,2
+	li	$v0,4
+	syscall	#print_string
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	#Año:
+	add	$a0,$s7,$t3
+	li	$v0,1
 	syscall	#print_int
 	
-	li	$a1,10
-	lw	$t0,meses($t0)
-	lb	$t0,($t0)
-	sub	$a1,$a1,$t0
+	#Espacios finales:
+	slti	$a1,$t0,10
+	addi	$a1,$a1,10
+	lbu	$t1,($t1)
+	sub	$a1,$a1,$t1
 	
-	bge	$s5,10,_pfEspacioFinalFecha
-	addi	$a1,$a1,1
-_pfEspacioFinalFecha:
 	jal	printEspacio
-	li	$a1,1
 	
-subiu	$sp,$sp,4
+subi	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
 
@@ -304,6 +420,37 @@ cargarMeses:
 	
 jr $ra
 
+division64Bits:
+	li	$t0,64
+	li	$v1,0
+	_d64bucle:
+		sll	$v1,$v1,1
+		srl	$t1,$a1,31
+		or	$v1,$v1,$t1
+		sll	$a1,$a1,1
+		srl	$t1,$a0,31
+		or	$a1,$a1,$t1
+		sll	$a0,$a0,1
+		
+		bltz	$v1,_sumar
+		subu	$v1,$v1,$a2
+		j	_checkBit	
+		_sumar:
+		addu	$v1,$v1,$a2
+		
+		_checkBit:
+		bltz	$v1,_bucleContinuar
+		ori	$a0,$a0,1
+		_bucleContinuar:
+		subi	$t0,$t0,1
+		beqz	$t0,_d64EndBucle
+	j	_d64bucle
+	_d64EndBucle:
+	bgez	$v1,_d64End
+	addu	$v1,$v1,$a2
+	_d64End:
+jr	$ra
+
 #Mueve el cursor de la línea actual (el asterisco del menú - $t9) el número de veces indicado en &t8, o hasta que $t9 sea 15
 horaSig:
 	beqz	$t8,endHoraSig
@@ -336,11 +483,21 @@ jr	$ra
 main:
 jal	cargarMeses
 
-li	$s4,2
-li	$s5,11
-li	$s6,2
+li	$s3,365
+li	$s4,5
+li	$s5,12
+li	$s6,11
 li	$s7,2026
 
 li	$t9,10
 
-jal	printMenu
+#jal	printMenu
+
+li	$v0,30
+syscall
+
+li	$a2,1000
+
+jal	division64Bits
+
+div	$a0,$a0,86400
