@@ -544,6 +544,120 @@ jr	$ra
 # en caso contrario salta a la instrucción agendar
 checkHoraPrev:
 
+#Mueve el día actual al siguiente.
+diaSig:
+	addi	$s3,$s3,1
+endDiaSig:
+jr	$ra
+
+#Mueve el día actual al anterior.
+diaPrev:
+	subi	$s3,$s3,1
+endDiaPrev:
+jr	$ra
+
+#Mueve el día actual al día especificado almacenado en $t7, el cual se encuentra en formato L>.
+semSig:
+	move	$a0,$ra
+	jal	diaAct
+	beq	$t7,0x3e4c,_semSig #Lunes
+	beq	$t7,0x3e4d,sigMar
+	beq	$t7,0x3e4a,sigJue
+	beq	$t7,0x3e56,sigVie
+	beq	$t7,0x3e53,sigSab
+	beq	$t7,0x3e44,sigDom
+	j	endSemSig
+	
+	sigMar:	
+		addi	$t1,$t1,1
+		blt	$t5,1,restarSem
+		j	_semSig
+	sigJue:
+		addi	$t1,$t1,3
+		blt	$t5,3,restarSem
+		j	_semSig
+	sigVie:	
+		addi	$t1,$t1,4
+		blt	$t5,4,restarSem
+		j	_semSig
+	sigSab:
+		addi	$t1,$t1,5
+		blt	$t5,5,restarSem
+		j	_semSig
+	sigDom:	
+		addi	$t1,$t1,6
+		blt	$t5,6,restarSem
+		j	_semSig
+	restarSem:
+		subi	$t1,$t1,7
+	_semSig:
+		sub	$t1,$t1,$t5
+		add	$s3,$s3,$t1	
+endSemSig:
+move	$ra,$a0
+jr	$ra
+
+#Mueve el día actual al día especificado almacenado en $t7, el cual se encuentra en formato <L.
+semPrev:
+	move	$a0,$ra
+	jal	diaAct
+	beq	$t7,0x4c3c,lunPrev #Lunes
+	beq	$t7,0x4d3c,marPrev
+	beq	$t7,0x4a3c,juePrev
+	beq	$t7,0x563c,viePrev
+	beq	$t7,0x533c,sabPrev
+	beq	$t7,0x443c,domPrev
+	j	endSemSig
+	
+	lunPrev:
+		addi	$t1,$t1,-7
+		j	_semPrev
+	marPrev:	
+		subi	$t1,$t1,1
+		bgt	$t5,1,sumarSem
+		j	_semPrev
+	juePrev:
+		subi	$t1,$t1,3
+		bgt	$t5,3,sumarSem
+		j	_semPrev
+	viePrev:	
+		subi	$t1,$t1,4
+		bgt	$t5,4,sumarSem
+		j	_semPrev
+	sabPrev:
+		subi	$t1,$t1,5
+		bgt	$t5,5,sumarSem
+		j	_semPrev
+	domPrev:	
+		subi	$t1,$t1,6
+		bgt	$t5,6,sumarSem
+		j	_semPrev
+	sumarSem:
+		addi	$t1,$t1,-7
+	_semPrev:
+		add	$t1,$t1,$t5
+		sub	$s3,$s3,$t1
+	
+endSemPrev:
+move	$ra,$a0
+jr	$ra
+
+#Calcula el identificador del día actual y lo almacena en $t5
+diaAct:
+	li	$t1,7
+	div	$s3,$t1
+	mfhi	$t5
+	bgez	$t5,seguir
+	#Número negativo
+	addi	$t5,$t5,7
+	
+seguir:	add	$t5,$t5,$s4
+	blt	$t5,7,endDiaAct
+	subi	$t5,$t5,7
+	
+endDiaAct:
+jr	$ra
+
 agendar:
 subiu	$sp,$sp,4
 lw	$ra,($sp)
