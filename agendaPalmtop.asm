@@ -547,6 +547,7 @@ jr	$ra
 #En base al input, revisa si debe hacer la instrucción de horaPrev, y cuántas veces en tal caso. Si sí debe hacerla, la ejecuta,
 # en caso contrario salta a la instrucción agendar
 checkHoraPrev:
+endCheckHoraPrev:
 
 #Mueve el día actual al siguiente.
 diaSig:
@@ -566,7 +567,7 @@ semSig:
 	addi	$sp,$sp,4
 
 	jal	diaAct
-	beq	$t7,0x3e4c,_semSig #Lunes
+	beq	$t7,0x3e4c,sigLun
 	beq	$t7,0x3e4d,sigMar
 	beq	$t7,0x3e4a,sigJue
 	beq	$t7,0x3e56,sigVie
@@ -574,26 +575,29 @@ semSig:
 	beq	$t7,0x3e44,sigDom
 	j	endSemSig
 	
+	sigLun:	li	$t1,0
+		j	_semSig
 	sigMar:	
-		addi	$t1,$t1,1
+		li	$t1,1
 		blt	$t5,1,restarSem
 		j	_semSig
 	sigJue:
-		addi	$t1,$t1,3
+		li	$t1,3
 		blt	$t5,3,restarSem
 		j	_semSig
 	sigVie:	
-		addi	$t1,$t1,4
+		li	$t1,4
 		blt	$t5,4,restarSem
 		j	_semSig
 	sigSab:
-		addi	$t1,$t1,5
+		li	$t1,5
 		blt	$t5,5,restarSem
 		j	_semSig
 	sigDom:	
-		addi	$t1,$t1,6
+		li	$t1,6
 		blt	$t5,6,restarSem
 		j	_semSig
+	#Se resta una semana cuando se está en la misma semana
 	restarSem:
 		subi	$t1,$t1,7
 	_semSig:
@@ -620,26 +624,26 @@ semPrev:
 	j	endSemSig
 	
 	lunPrev:
-		addi	$t1,$t1,-7
+		li	$t1,-7
 		j	_semPrev
 	marPrev:	
-		subi	$t1,$t1,1
+		li	$t1,1
 		bgt	$t5,1,sumarSem
 		j	_semPrev
 	juePrev:
-		subi	$t1,$t1,3
+		li	$t1,3
 		bgt	$t5,3,sumarSem
 		j	_semPrev
 	viePrev:	
-		subi	$t1,$t1,4
+		li	$t1,4
 		bgt	$t5,4,sumarSem
 		j	_semPrev
 	sabPrev:
-		subi	$t1,$t1,5
+		li	$t1,5
 		bgt	$t5,5,sumarSem
 		j	_semPrev
 	domPrev:	
-		subi	$t1,$t1,6
+		li	$t1,6
 		bgt	$t5,6,sumarSem
 		j	_semPrev
 	sumarSem:
@@ -655,6 +659,8 @@ jr	$ra
 
 #Calcula el identificador del día actual y lo almacena en $t5
 diaAct:
+	sw	$ra,($sp)
+	addiu	$sp,$sp,4
 	li	$t1,7
 	div	$s3,$t1
 	mfhi	$t5
@@ -667,6 +673,144 @@ seguir:	add	$t5,$t5,$s4
 	subi	$t5,$t5,7
 	
 endDiaAct:
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Mueve el día actual al mismo día del mes siguiente
+mesSig:
+	sw 	$ra,($sp)
+	addiu	$sp,$sp,4
+	
+	jal	mdActual
+	
+	#Se suma el número de días del mes actual
+	add	$s3,$s3,$t7
+	ble	$t5,28,endMesSig
+		
+	beq	$t3,12,casoDic
+	
+	#Se calcula la cantidad de días del mes siguiente al actual para el caso donde el día actual esté entre los últimos días del mes
+	addi	$t3,$t3,1
+	
+next:	mul	$t1,$t3,4
+	lw	$t7,meses($t1)
+	lb	$t7,1($t7) #$t7 ahora tiene el número de días del mes siguiente al actual
+	
+	ble	$t5,$t7,endMesSig
+	
+	sub	$t2,$t5,$t7 #$t2 ahora tiene la diferencia entre el día actual y el número de días del mes siguiente al actual
+	sub	$s3,$s3,$t2 #Se vuelve al último día del mes siguiente
+	j	endMesSig
+		
+	casoDic:
+		li 	$t3,0
+		j	next	
+	
+endMesSig:
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Mueve el día actual al mismo día del mes anterior
+mesPrev:
+	sw 	$ra,($sp)
+	addiu	$sp,$sp,4
+	
+	jal	mdActual
+
+	beq	$t3,0,casoEne
+	#Se calcula la cantidad de días del mes anterior al actual
+	subi	$t3,$t3,1
+_contPrev:
+	mul	$t1,$t3,4
+	lw	$t7,meses($t1)
+	lb	$t7,1($t7) #$t7 ahora tiene el número de días del mes anterior al actual
+	
+	sub	$s3,$s3,$t7
+	ble	$t5,28,endMesPrev
+	
+	sub	$t2,$t5,$t7
+	blez	$t2,endMesPrev
+	add	$s3,$s3,$t2
+	
+	j	endMesPrev
+		
+	casoEne:
+		li 	$t3,11
+		j	_contPrev
+	
+endMesPrev:
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Calcula el número de días del mes del día actual y lo almacena en $t7, almacena el día actual en $t5
+mdActual:
+	sw	$ra,($sp)
+	addiu	$sp,$sp,4
+	
+	mul 	$t1,$s6,4
+	lw	$t7,meses($t1)
+	lb	$t7,1($t7)
+	
+	sub	$t1,$t7,$s5 #Número de días desde el día 0 hasta el final del mes del día 0
+	
+	bltz	$s3,diaNegativo #Caso día actual negativo
+	
+	sub	$t1,$s3,$t1 #Se calcula la cantidad de días entre el día actual y el inicio del mes siguiente al mes del día 0
+	move	$t4,$t1
+	move	$t3,$s6
+	
+	#El día actual se encuentra en el mes 0
+	move 	$t2,$t1
+	blez	$t1,endLoopMes
+	
+	loopMes:
+		addi	$t3,$t3,1 #$t3 almacena el mes de la iteración actual
+		beq	$t3,12,casoFin
+		mul	$t1,$t3,4
+		lw	$t7,meses($t1)
+		lb	$t7,1($t7) #$t7 ahora tiene el número de días del mes siguiente
+		sub	$t2,$t4,$t7
+		move	$t4,$t2
+		bgez	$t2,loopMes
+		j	endLoopMes
+		casoFin:
+			li 	$t3,-1
+			j	loopMes
+	endLoopMes:
+	
+	#El día actual pertenece al mes identificado por $t3 que tiene $t2 días
+	add	$t5,$t7,$t2 #$t5 almacena el día actual
+	j	endMdActual
+	
+	diaNegativo:
+	add 	$t1,$s3,$s5 #Se calcula la cantidad de días entre el día actual y el final del mes anterior al mes del día 0
+	move	$t4,$t1
+	move 	$t3,$s6
+		
+	loopMesNeg:
+		beqz	$t3,casoIni
+		subi	$t3,$t3,1 #$t3 almacena el mes de la iteración actual
+		mul	$t1,$t3,4
+		lw	$t7,meses($t1)
+		lb	$t7,1($t7) #$t7 ahora tiene el número de días del mes anterior
+		add	$t2,$t4,$t7
+		move	$t4,$t2
+		blez	$t2,loopMesNeg
+		j	endLoopMesNeg
+		casoIni:
+			li 	$t3,12
+			j	loopMesNeg
+	endLoopMesNeg:
+	
+	#El día actual pertenece al mes identificado por $t3 que tiene $t7 días
+	move	$t5,$t2 #$t5 almacena el día actual
+	
+endMdActual:
+subiu	$sp,$sp,4
+lw	$ra,($sp)
 jr	$ra
 
 agendar:
