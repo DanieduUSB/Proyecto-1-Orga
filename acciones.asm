@@ -46,8 +46,11 @@ jr	$ra
 semSig:
 	sw	$ra,($sp)
 	addi	$sp,$sp,4
-
+	
+	#Se calcula el día actual
 	jal	diaAct
+	
+	#Se verifica el día de la semana al que se debe mover el día actual y se desplaza una semana adelante hacia dicho día
 	beq	$t7,0x3e4c,sigLun
 	beq	$t7,0x3e4d,sigMar
 	beq	$t7,0x3e4a,sigJue
@@ -95,8 +98,11 @@ semPrev:
 	sw	$ra,($sp)
 	addiu	$sp,$sp,4
 	
+	#Se calcula el día actual
 	jal	diaAct
-	beq	$t7,0x4c3c,lunPrev #Lunes
+	
+	#Se verifica el día de la semana al que se debe mover el día actual y se desplaza una semana atrás hacia dicho día
+	beq	$t7,0x4c3c,lunPrev
 	beq	$t7,0x4d3c,marPrev
 	beq	$t7,0x4a3c,juePrev
 	beq	$t7,0x563c,viePrev
@@ -127,6 +133,8 @@ semPrev:
 		li	$t1,6
 		bgt	$t5,6,sumarSem
 		j	_semPrev
+		
+	#Se resta una semana cuando se está en la misma semana
 	sumarSem:
 		addi	$t1,$t1,-7
 	_semPrev:
@@ -143,18 +151,21 @@ mesSig:
 	sw 	$ra,($sp)
 	addiu	$sp,$sp,4
 	
+	#Se calcula el día y mes actuales
 	jal	mdActual
 	
-	#Se suma el número de días del mes actual
+	#Se suma al día actual el número de días del mes actual
 	add	$s3,$s3,$t7
 	ble	$t5,28,endMesSig
-		
+	
+	#$t3 contiene el mes actual	
 	beq	$t3,12,casoDic
 	
 	#Se calcula la cantidad de días del mes siguiente al actual para el caso donde el día actual esté entre los últimos días del mes
 	addi	$t3,$t3,1
 	
-next:	mul	$t1,$t3,4
+_contSig:
+	mul	$t1,$t3,4
 	lw	$t7,meses($t1)
 	lb	$t7,1($t7) #$t7 ahora tiene el número de días del mes siguiente al actual
 	
@@ -166,7 +177,7 @@ next:	mul	$t1,$t3,4
 		
 	casoDic:
 		li 	$t3,0
-		j	next	
+		j	_contSig
 	
 endMesSig:
 subiu	$sp,$sp,4
@@ -178,9 +189,12 @@ mesPrev:
 	sw 	$ra,($sp)
 	addiu	$sp,$sp,4
 	
+	#Se calcula el día y mes actuales
 	jal	mdActual
-
+	
+	#$t3 contiene el mes actual
 	beq	$t3,0,casoEne
+	
 	#Se calcula la cantidad de días del mes anterior al actual
 	subi	$t3,$t3,1
 _contPrev:
@@ -193,6 +207,8 @@ _contPrev:
 	
 	sub	$t2,$t5,$t7
 	blez	$t2,endMesPrev
+	
+	#Se suma al día actual el número de días del mes anterior
 	add	$s3,$s3,$t2
 	
 	j	endMesPrev

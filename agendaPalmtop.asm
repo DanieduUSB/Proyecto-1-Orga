@@ -62,13 +62,18 @@ j main
 main:
 jal	cargarMeses
 jal	fechaActual
-li	$s3,16
+li	$s3,290
 jal	printMenu
 
-jal	mesPrev
+jal	mesSig
 
 jal	printMenu
 
 jal	mesSig
 
 jal	printMenu
+
+jal	mesSig
+
+jal	printMenu
+
