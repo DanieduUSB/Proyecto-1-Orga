@@ -42,109 +42,165 @@ diaPrev:
 endDiaPrev:
 jr	$ra
 
-#Mueve el día actual al día especificado almacenado en $t7, el cual se encuentra en formato L>.
-semSig:
-	sw	$ra,($sp)
-	addi	$sp,$sp,4
-	
+#Mueve el día actual al siguiente lunes
+sigLun:	
 	#Se calcula el día actual
 	jal	diaAct
-	
-	#Se verifica el día de la semana al que se debe mover el día actual y se desplaza una semana adelante hacia dicho día
-	beq	$t7,0x3e4c,sigLun
-	beq	$t7,0x3e4d,sigMar
-	beq	$t7,0x3e4a,sigJue
-	beq	$t7,0x3e56,sigVie
-	beq	$t7,0x3e53,sigSab
-	beq	$t7,0x3e44,sigDom
-	j	endSemSig
-	
-	sigLun:	li	$t1,0
-		j	_semSig
-	sigMar:	
-		li	$t1,1
-		blt	$t5,1,restarSem
-		j	_semSig
-	sigJue:
-		li	$t1,3
-		blt	$t5,3,restarSem
-		j	_semSig
-	sigVie:	
-		li	$t1,4
-		blt	$t5,4,restarSem
-		j	_semSig
-	sigSab:
-		li	$t1,5
-		blt	$t5,5,restarSem
-		j	_semSig
-	sigDom:	
-		li	$t1,6
-		blt	$t5,6,restarSem
-		j	_semSig
+	li	$t1,0
+	sub	$t1,$t1,$t5
+	add	$s3,$s3,$t1
+j	programa
+
+#Mueve el día actual al siguiente martes
+sigMar:	
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,1
+	blt	$t5,1,restarSemM
+	j	_sigMar
 	#Se resta una semana cuando se está en la misma semana
-	restarSem:
+	restarSemM:
 		subi	$t1,$t1,7
-	_semSig:
-		sub	$t1,$t1,$t5
-		add	$s3,$s3,$t1	
-endSemSig:
+_sigMar:
+	sub	$t1,$t1,$t5
+	add	$s3,$s3,$t1
+j	programa
 
-subiu	$sp,$sp,4
-lw	$ra,($sp)
-jr	$ra
-
-#Mueve el día actual al día especificado almacenado en $t7, el cual se encuentra en formato <L.
-semPrev:
-	sw	$ra,($sp)
-	addiu	$sp,$sp,4
-	
+sigJue:
 	#Se calcula el día actual
 	jal	diaAct
-	
-	#Se verifica el día de la semana al que se debe mover el día actual y se desplaza una semana atrás hacia dicho día
-	beq	$t7,0x4c3c,lunPrev
-	beq	$t7,0x4d3c,marPrev
-	beq	$t7,0x4a3c,juePrev
-	beq	$t7,0x563c,viePrev
-	beq	$t7,0x533c,sabPrev
-	beq	$t7,0x443c,domPrev
-	j	endSemSig
-	
-	lunPrev:
-		li	$t1,-7
-		j	_semPrev
-	marPrev:	
-		li	$t1,1
-		bgt	$t5,1,sumarSem
-		j	_semPrev
-	juePrev:
-		li	$t1,3
-		bgt	$t5,3,sumarSem
-		j	_semPrev
-	viePrev:	
-		li	$t1,4
-		bgt	$t5,4,sumarSem
-		j	_semPrev
-	sabPrev:
-		li	$t1,5
-		bgt	$t5,5,sumarSem
-		j	_semPrev
-	domPrev:	
-		li	$t1,6
-		bgt	$t5,6,sumarSem
-		j	_semPrev
-		
+	li	$t1,3
+	blt	$t5,3,restarSemJ
+	j	_sigJue
 	#Se resta una semana cuando se está en la misma semana
-	sumarSem:
-		addi	$t1,$t1,-7
-	_semPrev:
-		add	$t1,$t1,$t5
-		sub	$s3,$s3,$t1
-	
-endSemPrev:
-subiu	$sp,$sp,4
-lw	$ra,($sp)
-jr	$ra
+	restarSemJ:
+		subi	$t1,$t1,7
+_sigJue:
+	sub	$t1,$t1,$t5
+	add	$s3,$s3,$t1
+j	programa
+
+sigVie:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,4
+	blt	$t5,4,restarSemV
+	j	_sigVie
+	#Se resta una semana cuando se está en la misma semana
+	restarSemV:
+		subi	$t1,$t1,7
+_sigVie:
+	sub	$t1,$t1,$t5
+	add	$s3,$s3,$t1
+j	programa
+
+sigSab:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,5
+	blt	$t5,5,restarSemS
+	j	_sigSab
+	#Se resta una semana cuando se está en la misma semana
+	restarSemS:
+		subi	$t1,$t1,7
+_sigSab:
+	sub	$t1,$t1,$t5
+	add	$s3,$s3,$t1
+j	programa
+
+sigDom:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,6
+	blt	$t5,6,restarSemD
+	j	_sigDom
+	#Se resta una semana cuando se está en la misma semana
+	restarSemS:
+		subi	$t1,$t1,7
+_sigDom:
+	sub	$t1,$t1,$t5
+	add	$s3,$s3,$t1
+j	programa
+
+#Mueve el día actual al lunes previo
+lunPrev:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,-7
+	add	$t1,$t1,$t5
+	sub	$s3,$s3,$t1
+j	programa
+
+#Mueve el día actual al martes previo
+marPrev:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,1
+	bgt	$t5,$t1,resSemM
+	j	_semPrevM
+	#Se resta una semana cuando se está en la misma semana
+	resSemM:
+		subi	$t1,$t1,7
+_semPrevM:
+	add	$t1,$t1,$t5
+	sub	$s3,$s3,$t1
+j	programa
+
+juePrev:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,3
+	bgt	$t5,$t1,resSemJ
+	j	_semPrevJ
+	#Se resta una semana cuando se está en la misma semana
+	resSemM:
+		subi	$t1,$t1,7
+_semPrevJ:
+	add	$t1,$t1,$t5
+	sub	$s3,$s3,$t1
+j	programa
+
+viePrev:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,4
+	bgt	$t5,$t1,resSemV
+	j	_semPrevV
+	#Se resta una semana cuando se está en la misma semana
+	resSemV:
+		subi	$t1,$t1,7
+_semPrevV:
+	add	$t1,$t1,$t5
+	sub	$s3,$s3,$t1
+j	programa
+
+sabPrev:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,5
+	bgt	$t5,$t1,resSemS
+	j	_semPrevS
+	#Se resta una semana cuando se está en la misma semana
+	resSemS:
+		subi	$t1,$t1,7
+_semPrevS:
+	add	$t1,$t1,$t5
+	sub	$s3,$s3,$t1
+j	programa
+
+domPrev:
+	#Se calcula el día actual
+	jal	diaAct
+	li	$t1,6
+	bgt	$t5,$t1,resSemD
+	j	_semPrevD
+	#Se resta una semana cuando se está en la misma semana
+	resSemD:
+		subi	$t1,$t1,7
+_semPrevD:
+	add	$t1,$t1,$t5
+	sub	$s3,$s3,$t1
+j	programa
 
 #Mueve el día actual al mismo día del mes siguiente
 mesSig:
@@ -158,11 +214,10 @@ mesSig:
 	add	$s3,$s3,$t7
 	ble	$t5,28,endMesSig
 	
-	#$t3 contiene el mes actual	
-	beq	$t3,12,casoDic
-	
+	#$t3 contiene el mes actual
 	#Se calcula la cantidad de días del mes siguiente al actual para el caso donde el día actual esté entre los últimos días del mes
-	addi	$t3,$t3,1
+	addi	$t3,$t3,1	
+	beq	$t3,12,casoDic
 	
 _contSig:
 	mul	$t1,$t3,4
@@ -221,3 +276,7 @@ endMesPrev:
 subiu	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
+
+#Borra una cita agendada
+borrarCita:
+endBorrarCita:

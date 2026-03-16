@@ -209,7 +209,7 @@ addiu	$sp,$sp,4
 		lb	$t7,1($t7) #$t7 ahora tiene el número de días del mes siguiente
 		sub	$t2,$t4,$t7
 		move	$t4,$t2
-		bgez	$t2,loopMes
+		bgtz	$t2,loopMes
 		j	endLoopMes
 		casoFin:
 			li 	$t3,-1
@@ -233,7 +233,7 @@ addiu	$sp,$sp,4
 		lb	$t7,1($t7) #$t7 ahora tiene el número de días del mes anterior
 		add	$t2,$t4,$t7
 		move	$t4,$t2
-		blez	$t2,loopMesNeg
+		bltz	$t2,loopMesNeg
 		j	endLoopMesNeg
 		casoIni:
 			li 	$t3,12
@@ -242,11 +242,14 @@ addiu	$sp,$sp,4
 	
 	#El día actual pertenece al mes identificado por $t3 que tiene $t7 días
 	move	$t5,$t2 #$t5 almacena el día actual
+	bgez	$t5,endMdActual
 	
 endMdActual:
 subiu	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
+
+
 
 #Busca una cita, si existe, que corresponda al día de la agenda y a la hora indicada en $a2 (Considerando que 0=6am, 1=7am, ..,
 # 15=9pm). Utiliza $k0 y $k1 como direcciones límites en la lista para iterar, es decir, $k0 representa la primera cita del día
