@@ -160,20 +160,22 @@ subiu	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
 
-#Calcula el identificador del día actual y lo almacena en $t5
+#Calcula el identificador del día actual y lo almacena en $t4
 diaAct:
 sw	$ra,($sp)
 addiu	$sp,$sp,4
+	#Se calcula el día actual en base al día lunes
 	li	$t1,7
 	div	$s3,$t1
-	mfhi	$t5
-	bgez	$t5,seguir
-	#Número negativo
-	addi	$t5,$t5,7
-	
-seguir:	add	$t5,$t5,$s4
-	blt	$t5,7,endDiaAct
-	subi	$t5,$t5,7
+	mfhi	$t4
+	bgez	$t4,seguir
+	#Si $t4 es un número negativo, se le suma 7 para obtener el día de la semana
+	addi	$t4,$t4,7
+seguir:	
+	#Se suma el desplazamiento del día 0
+	add	$t4,$t4,$s4
+	blt	$t4,7,endDiaAct
+	subi	$t4,$t4,7
 	
 endDiaAct:
 subiu	$sp,$sp,4
