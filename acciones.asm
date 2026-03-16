@@ -50,12 +50,13 @@ j	programa
 sigMar:	
 	#Se calcula el día actual
 	jal	diaAct
-	li	$t1,1
-	blt	$t5,1,restarSemM
+	blt	$t5,1,diaPrevM
+	li	$t1,8
 	j	_sigMar
-	#Se resta una semana cuando se está en la misma semana
-	restarSemM:
-		subi	$t1,$t1,7
+	#Se suma un solo día si es lunes
+	diaPrevM:
+		addi	$s3,$s3,1
+		j	programa
 _sigMar:
 	sub	$t1,$t1,$t5
 	add	$s3,$s3,$t1
@@ -64,12 +65,12 @@ j	programa
 sigJue:
 	#Se calcula el día actual
 	jal	diaAct
-	li	$t1,3
-	blt	$t5,3,restarSemJ
+	blt	$t5,3,diaPrevJ
+	li	$t1,10
 	j	_sigJue
-	#Se resta una semana cuando se está en la misma semana
-	restarSemJ:
-		subi	$t1,$t1,7
+	#Caso si se está antes del jueves
+	diaPrevJ:
+		li	$t1,3
 _sigJue:
 	sub	$t1,$t1,$t5
 	add	$s3,$s3,$t1
@@ -78,12 +79,12 @@ j	programa
 sigVie:
 	#Se calcula el día actual
 	jal	diaAct
-	li	$t1,4
-	blt	$t5,4,restarSemV
+	blt	$t5,4,diaPrevV
+	li	$t1,11
 	j	_sigVie
-	#Se resta una semana cuando se está en la misma semana
-	restarSemV:
-		subi	$t1,$t1,7
+	#Caso si se está antes del viernes
+	diaPrevV:
+		li	$t1,4
 _sigVie:
 	sub	$t1,$t1,$t5
 	add	$s3,$s3,$t1
@@ -92,12 +93,12 @@ j	programa
 sigSab:
 	#Se calcula el día actual
 	jal	diaAct
-	li	$t1,5
-	blt	$t5,5,restarSemS
+	blt	$t5,5,diaPrevS
+	li	$t1,12
 	j	_sigSab
-	#Se resta una semana cuando se está en la misma semana
-	restarSemS:
-		subi	$t1,$t1,7
+	#Caso si se está antes del sábado
+	diaPrevS:
+		li	$t1,5
 _sigSab:
 	sub	$t1,$t1,$t5
 	add	$s3,$s3,$t1
@@ -106,12 +107,12 @@ j	programa
 sigDom:
 	#Se calcula el día actual
 	jal	diaAct
-	li	$t1,6
-	blt	$t5,6,restarSemD
+	blt	$t5,6,diaPrevD
+	li	$t1,13
 	j	_sigDom
 	#Se resta una semana cuando se está en la misma semana
-	restarSemD:
-		subi	$t1,$t1,7
+	diaPrevD:
+		li	$t1,6
 _sigDom:
 	sub	$t1,$t1,$t5
 	add	$s3,$s3,$t1

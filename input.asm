@@ -216,7 +216,7 @@ delVerif:
 	jal	verifChar
 	bne	$t0,0x6c,agendar
 	jal	verifChar
-	beqz	$t0,borrarCita
+	beqz	$t0,borrarCitaCheck
 
 	j	agendar
 

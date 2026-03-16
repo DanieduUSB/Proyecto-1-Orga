@@ -169,6 +169,39 @@ errorAgendar:
 
 #Borra la cita seleccionada actual (Ubicada en $s1)
 borrarCita:
+	#Pide al usuario confirmación para borrar la cita
+	move	$t5,$t9
+	jal	printMenu
+	li	$t5,-1
+_bcConfirmar:
+	li	$v0,12
+	syscall	#read_char
+	
+	move	$a1,$v0
+	jal	printSaltoLinea
+	
+	beq	$a1,0x53,_bcBorrar
+	beq	$a1,0x73,_bcBorrar
+	beq	$a1,0x4e,programa
+	beq	$a1,0x6e,programa
+	
+	#Error si se escribe un caracter distinto de "s", "S", "n" o "N"
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
+	
+	li	$v0,4
+	la	$a0,confirmar
+	syscall	#print_string
+	
+	jal	printSaltoLinea
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
+	
+	j	_bcConfirmar
+
+_bcBorrar:
 	jal	arreglarCitasDiaBorrar
 	
 	#Cambia los apuntadores de $s0 y $s2 para que se apunten entre ellos (en caso de que existan)

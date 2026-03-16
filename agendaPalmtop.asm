@@ -1,7 +1,7 @@
 .data
 duracion:	.asciiz "Duración: "
 duracionMenu:	.asciiz	"Duración? (S/N)"
-confirmar:	.asciiz "Confirmar? (S/N)"
+confirmar:	.asciiz "Confirmar?(S/N)"
 error:		.asciiz "Error. Cancelando"
 dias:		.asciiz	"lun"
 			"mar"
@@ -65,8 +65,6 @@ j main
 main:
 jal	cargarMeses
 jal	fechaActual
-li	$s3,2
-li	$t9,3
 
 programa:
 li	$t5,-1

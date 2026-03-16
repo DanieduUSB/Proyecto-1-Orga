@@ -162,8 +162,8 @@ jr	$ra
 
 #Calcula el identificador del día actual y lo almacena en $t5
 diaAct:
-	sw	$ra,($sp)
-	addiu	$sp,$sp,4
+sw	$ra,($sp)
+addiu	$sp,$sp,4
 	li	$t1,7
 	div	$s3,$t1
 	mfhi	$t5
