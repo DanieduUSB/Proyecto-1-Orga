@@ -68,3 +68,39 @@ printBarra:	li $v0,11
 		j  _pbLoop
 	
 endPrintBarra:  jr $ra
+
+#Imprime por la salida estándar el caracter "$" una vez
+printDolar:	li $v0,11
+		la $a0,0x24
+		syscall #print_char
+	jr $ra
+
+#Imprime por la salida estándar el caracter ">" una vez
+printMayorQue:	li $v0,11
+		la $a0,0x3e
+		syscall #print_char
+	jr $ra
+
+#Imprime por la salida estándar el caracter "#" una vez
+printNumeral:	li $v0,11
+		la $a0,0x23
+		syscall #print_char
+	jr $ra
+
+#Imprime por la salida estándar "am"
+printAM:	li	$v0,11
+		li	$a0,0x61 # "a"
+		syscall	#print_char
+		
+		li	$a0,0x6d # "m"
+		syscall	#print_char
+	jr $ra
+	
+#Imprime por la salida estándar "pm"
+printPM:	li	$v0,11
+		li	$a0,0x70 # "p"
+		syscall	#print_char
+		
+		li	$a0,0x6d # "m"
+		syscall	#print_char
+	jr $ra

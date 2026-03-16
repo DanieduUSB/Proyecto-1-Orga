@@ -10,7 +10,15 @@ agendar:
 	#Chequea que no haya otra cita en la hora seleccionada
 	bnez	$s1,errorAgendar
 	
+	#Establece en $t6 la línea en la cual aparece la entrada introducida y en $t7 la línea en la cual debe preguntar al
+	# usuario si quiere establecer duración
+	move	$t6,$t9
+	addi	$t7,$t9,1
 	jal	printMenu
+	li	$t6,-1
+	li	$t7,-1
+	
+	#Se utiliza $t8 para marcar la hora final de la cita
 	move	$t8,$t9
 	
 	#Confirmación para la duración. Si la duración sobrepasa las 9pm, omite esta pregunta
@@ -18,15 +26,36 @@ agendar:
 _agendarConfirmar:
 	li	$v0,12
 	syscall	#read_char
+	
+	move	$a1,$v0
 	jal	printSaltoLinea
-	beq	$v0,0x53,_agendarDuracion
-	beq	$v0,0x73,_agendarDuracion
-	beq	$v0,0x4e,_agendarCrearCita
-	beq	$v0,0x6e,_agendarCrearCita
-	#Lanzar un error si llega a este punto
+	
+	beq	$a1,0x53,_agendarDuracion
+	beq	$a1,0x73,_agendarDuracion
+	beq	$a1,0x4e,_agendarCrearCita
+	beq	$a1,0x6e,_agendarCrearCita
+	
+	#Error si se escribe un caracter distinto de "s", "S", "n" o "N"
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
+	
+	li	$v0,4
+	la	$a0,duracionMenu
+	syscall	#print_string
+	
+	jal	printSaltoLinea
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
+	
 	j	_agendarConfirmar
 	
 _agendarDuracion:
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
+	
 	li	$v0,4
 	la	$a0,duracion
 	syscall	#print_string
@@ -47,7 +76,6 @@ _agendarDuracion:
 _agendarCheckSolapamiento:
 
 	#Chequea que la hora de finalización no solape con una cita mas tarde
-	
 	beqz	$s2,_agendarCrearCita
 	lb	$t7,8($s2)
 	bge	$t8,$t7,errorAgendar
@@ -55,22 +83,22 @@ _agendarCheckSolapamiento:
 _agendarCrearCita:
 
 	#Se crea una cita en la lista enlazada con 45 bytes, de manera que:
-	# Los primeros 4 bytes son un apuntador a la cita anterior (o 0 si no hay anterior)
-	# Los siguientes 4 bytes son un apuntador a la cita siguiente (o 0 si no hay siguiente)
-	# El siguiente byte es el número de días a partir del día 0 en el que se ubica la cita (Es decir, el valor de $s3 al crear
+	# Pos 0-3: Los primeros 4 bytes son un apuntador a la cita anterior (o 0 si no hay anterior)
+	# Pos 4-7: Los siguientes 4 bytes son un apuntador a la cita siguiente (o 0 si no hay siguiente)
+	# Pos 8: Es el número de días a partir del día 0 en el que se ubica la cita (Es decir, el valor de $s3 al crear
 	#  la cita)
-	# El siguiente byte es la hora inicial de la cita (0=6am, 15=9pm)
-	# El siguiente byte es la hora final de la cita (0=6am, 15=9pm)
-	# Los siguientes 17 bytes corresponden a: 15 bytes que guardan un string, un byte nulo, y un byte que contiene la longitud
+	# Pos 9: Es la hora inicial de la cita (0=6am, 15=9pm)
+	# Pos 10: Es la hora final de la cita (0=6am, 15=9pm)
+	# Pos 11-27: Estos 17 bytes corresponden a: 15 bytes que guardan un string, un byte nulo, y un byte que contiene la longitud
 	#  del string
-	# Los siguientes 17 bytes vuelven a ser iguales al de arriba
+	# Pos 28-44: Los siguientes 17 bytes vuelven a ser iguales al de arriba
 	li	$v0,9
 	li	$a0,45
 	syscall #sbrk
 	
-	lb	$s3,8($v0)
-	lb	$t9,9($v0)
-	lb	$t8,10($v0)
+	sb	$s3,8($v0)
+	sb	$t9,9($v0)
+	sb	$t8,10($v0)
 	
 	#Guardar primer string
 	li	$t0,0
@@ -98,8 +126,11 @@ _agendarString2Loop:
 _agendarDireccionesLista:
 	move	$s1,$v0
 	jal	linkearAnteriorLista
+	jal	linkearSiguienteLista
 	
-	sw	$s2,4($s1)
+	jal	arreglarCitasDia
+
+j	programa
 	
 #Conecta el nodo al que se apunta en $s2 con el nodo en $s1 en la lista enlazada de las citas agendadas.
 linkearSiguienteLista:
@@ -124,4 +155,35 @@ establecerCabezaLista:
 	jr	$ra
 
 errorAgendar:
+	jal	printSaltoLinea
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
 	
+	li	$v0,4
+	la	$a0,error
+	syscall	#print_string
+	
+	jal	printSaltoLinea
+	j	programa
+
+#Borra la cita seleccionada actual (Ubicada en $s1)
+borrarCita:
+	jal	arreglarCitasDiaBorrar
+	
+	#Cambia los apuntadores de $s0 y $s2 para que se apunten entre ellos (en caso de que existan)
+	bnez	$s0,_bcApuntadorS0
+	bnez	$s2,_bcApuntadorS2
+	j	_bcEnd
+	
+_bcApuntadorS0:
+	sw	$s2,4($s0)
+	beqz	$s2,_bcEnd
+
+_bcApuntadorS2:
+	sw	$s0,($s2)
+
+_bcEnd:
+	li	$s1,0
+	j	programa
+

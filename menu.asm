@@ -192,19 +192,278 @@ subiu	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
 
-#Imprime por la salida estándar la mitad del menú. $a2 indica el número de línea (Considerando que la línea 0 es la línea de las
-# 6am en el menú y la línea 15 las 9pm en el menú).
-printMedioMenu:
-sw	$ra,($sp)
-addiu	$sp,$sp,4
+#Imprime por la salida estándar la mitad del menú que corresponde a la hora inicial y los primeros caracteres de una cita. $a2
+# indica la hora (0=6am, 15=9pm)
+medioMenu0:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	jal	printNumeral
 	
+	#Encuentra la hora real en formato 24h
+	addi	$t0,$a2,6
+	bgt	$t0,12,_mm0pm
+	beq	$t0,12,_mm0mm
+
+_mm0am:
+	beq	$t9,$a2,_mm0amAsterisco
+	slti	$a1,$t0,10
+	jal	printEspacio
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printAM
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	j	_mm0Continuar
+
+_mm0amAsterisco:
+	slti	$a1,$t0,10
+	jal	printAsterisco
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printAM
+	
+	li	$a1,1
+	jal	printAsterisco
+	
+	j	_mm0Continuar
+
+_mm0mm:
+	beq	$t9,$a2,_mm0mmAsterisco
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	j	_mm0Continuar
+
+_mm0mmAsterisco:
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printAsterisco
+	
+	j	_mm0Continuar
+
+_mm0pm:
+	subi	$t0,$t0,12
+	beq	$t9,$a2,_mm0pmAsterisco
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	j	_mm0Continuar
+
+_mm0pmAsterisco:
+	li	$a1,1
+	jal	printAsterisco
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printAsterisco
+
+_mm0Continuar:
+	#Toma la primera parte del string y la printea
+	lb	$t0,27($v1)
+	addi	$a0,$v1,11
+	li	$v0,4
+	syscall	#print_string
+	
+	#Calcula cuantos espacios en blanco hay que printear luego del string
+	li	$a1,15
+	sub	$a1,$a1,$t0
+	jal	printEspacio
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime por la salida estándar medio menú correspondiente a la segunda parte del string de una cita. $a2 indica la hora (0=6am,
+# 15=9pm)
+medioMenu1:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	
+	jal	printNumeral
+	
+	#Toma el string correspondiente
+	lb	$t0,44($v1)
+	addi	$a0,$v1,28
+	li	$v0,4
+	syscall	#print_string
+	
+	#Calcula cuantos espacios en blanco hay que printear
+	li	$a1,20
+	sub	$a1,$a1,$t0
+	jal	printEspacio
+	
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime por la salida estándar medio menú correspondiente a la hora final de una cita. $a2 indica la hora actual (0=6am,
+# 15=9pm)
+medioMenu2:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	
+	jal	printNumeral
+	
+	li	$a1,1
+	jal	printIgualdad
+	
+	jal	printMayorQue
+	
+	#Toma la hora final de la cita correspondiente, luego le suma 6 para tenerla en formato 24h
+	lb	$a0,10($v1)
+	addi	$a0,$a0,6
+	
+	bgt	$a0,12,_mm2pm
+	beq	$a0,12,_mm2mm
+	
+_mm2am:
+	sgt	$t0,$a0,9
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printAM
+	
+	j	_mm2Continuar
+
+_mm2mm:
+	li	$t0,1
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	j	_mm2Continuar
+
+_mm2pm:
+	li	$t0,0
+	subi	$a0,$a0,12
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+
+_mm2Continuar:
+	li	$a1,15
+	sub	$a1,$a1,$t0
+	jal	printEspacio
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime por la salida estándar medio menú correspondiente al límnite inferior de una cita. $a2 indica la línea actual
+medioMenu3:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	jal	printNumeral
+	li	$a1,20
+	jal	printGuion
+	
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Corresponde a medio menú que contiene el límite inferior con la hora final de la cita sobre este
+medioMenu4:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	
+	jal	printNumeral
+	
+	li	$a1,1
+	jal	printIgualdad
+	
+	jal	printMayorQue
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	#Toma la hora final de la cita correspondiente, luego le suma 6 para tenerla en formato 24h
+	lb	$a0,10($v1)
+	addi	$a0,$a0,6
+	
+	bgt	$a0,12,_mm4pm
+	beq	$a0,12,_mm4mm
+	
+_mm4am:
+	sgt	$t0,$a0,9
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printAM
+	
+	j	_mm4Continuar
+	
+_mm4mm:
+	li	$t0,1
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	j	_mm4Continuar
+
+_mm4pm:
+	li	$t0,0
+	subi	$a0,$a0,12
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+
+_mm4Continuar:
+	li	$a1,14
+	sub	$a1,$a1,$t0
+	jal	printGuion
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime por la salida estándar una línea normal sin cita
+medioMenu5:
 	slti	$a1,$a2,4
 	jal	printEspacio
 	
 	addi	$a0,$a2,6
-	blt	$a0,13,_pmmContinuar
+	blt	$a0,13,_mm5Continuar
 	subi	$a0,$a0,12
-_pmmContinuar:
+_mm5Continuar:
 	li	$v0,1
 	syscall	#print_int
 	
@@ -219,6 +478,267 @@ _pmmContinuar:
 subiu	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
+
+#Printea medio menú de una línea con cita pero sin texto. $a2 indica la hora actual a printear
+medioMenu6:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	
+	jal	printNumeral
+	
+	li	$a1,20
+	jal	printEspacio
+	
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime media línea pidiendo duración, lo hace sobre una línea que no tenía cita anteriormente
+medioMenuDuracion1:
+	slti	$a1,$a2,4
+	jal	printEspacio
+	
+	addi	$a0,$a2,6
+	blt	$a0,13,_mmd1Continuar
+	subi	$a0,$a0,12
+_mmd1Continuar:
+	li	$v0,1
+	syscall	#print_int
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	la	$a0,duracionMenu
+	li	$v0,4
+	syscall	#print_string
+	
+	li	$a1,4
+	jal	printEspacio
+	
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime media línea pidiendo duración, lo hace sobre una línea que tenía cita anteriormente
+medioMenuDuracion2:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	jal	printNumeral
+	
+	#Encuentra la hora real en formato 24h
+	addi	$t0,$a2,6
+	bgt	$t0,12,_mmd2pm
+	beq	$t0,12,_mmd2mm
+
+_mmd2am:
+	slti	$a1,$t0,10
+	jal	printEspacio
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printAM
+	
+	j	_mmd2Continuar
+	
+_mmd2mm:
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	j	_mmd2Continuar
+
+_mmd2pm:
+	subi	$t0,$t0,12
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+
+_mmd2Continuar:
+	li	$a1,1
+	jal	printEspacio
+
+	la	$a0,duracionMenu
+	li	$v0,4
+	syscall	#print_string
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Elige de que manera printear la duración en base al valor obtenido en $a3
+medioMenuDuracion:
+	beqz	$a3,medioMenuDuracion2
+	j	medioMenuDuracion1
+	
+#Printea media línea tal que contiene una cita a agregar en el programa y que debe ser confirmada
+medioMenuCrearCita:
+	slti	$a1,$a2,4
+	jal	printEspacio
+	
+	addi	$a0,$a2,6
+	blt	$a0,13,_mmccContinuar
+	subi	$a0,$a0,12
+_mmccContinuar:
+	li	$v0,1
+	syscall	#print_int
+	
+	li	$a1,1
+	jal	printAsterisco
+	
+	#Printea el string que está siendo computado como entrada actualmente (Lo limita a 15 caracteres como máximo)
+	la	$a0,inputAux
+	li	$v0,4
+	syscall	#print_string
+	
+	#Calcula cuantos espacios van después de dicho string
+	lb	$a0,inputAux+16
+	li	$a1,19
+	sub	$a1,$a1,$a0
+	jal	printEspacio
+	
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime en la línea actual una pregunta de confirmación para borrar la cita actual.
+medioMenuConfirmar:
+	slti	$a1,$a2,7
+	jal	printEspacio
+	jal	printNumeral
+	
+	#Encuentra la hora real en formato 24h
+	addi	$t0,$a2,6
+	bgt	$t0,12,_mmcpm
+	beq	$t0,12,_mmcmm
+
+_mmcam:
+	beq	$t9,$a2,_mmcamAsterisco
+	slti	$a1,$t0,10
+	jal	printEspacio
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printAM
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	j	_mmcContinuar
+
+_mmcamAsterisco:
+	slti	$a1,$t0,10
+	jal	printAsterisco
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printAM
+	
+	li	$a1,1
+	jal	printAsterisco
+	
+	j	_mmcContinuar
+
+_mmcmm:
+	beq	$t9,$a2,_mmcmmAsterisco
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	j	_mmcContinuar
+
+_mmcmmAsterisco:
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printAsterisco
+	
+	j	_mmcContinuar
+
+_mmcpm:
+	subi	$t0,$t0,12
+	beq	$t9,$a2,_mmcpmAsterisco
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printEspacio
+	
+	j	_mmcContinuar
+
+_mmcpmAsterisco:
+	li	$a1,1
+	jal	printAsterisco
+	
+	move	$a0,$t0
+	li	$v0,1
+	syscall	#print_int
+	
+	jal	printPM
+	
+	li	$a1,1
+	jal	printAsterisco
+
+_mmcContinuar:
+	#Printea la pregunta de confirmación
+	li	$v0,4
+	la	$a0,confirmar
+	syscall	#print_string
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Imprime por la salida estándar la mitad del menú. $a2 indica el número de línea (Considerando que la línea 0 es la línea de las
+# 6am en el menú y la línea 15 las 9pm en el menú).
+printMedioMenu:
+sw	$ra,($sp)
+addiu	$sp,$sp,4
+
+	#Elige en qué caso cae la cita actual correspondiente
+	jal	buscarCitaPrint
+	
+	beq	$a2,$t5,medioMenuConfirmar
+	beq	$a2,$t6,medioMenuCrearCita
+	beq	$a2,$t7,medioMenuDuracion
+	
+	beq	$a3,0,medioMenu0
+	beq	$a3,1,medioMenu1
+	beq	$a3,2,medioMenu2
+	beq	$a3,3,medioMenu3
+	beq	$a3,4,medioMenu4
+	beq	$a3,5,medioMenu5
+	j	medioMenu6
 
 #Imprime por la salida estándar el menú principal de la agenda
 printMenu:
@@ -276,10 +796,7 @@ _pmEndLoop:
 	jal	printFechaActual
 	
 	#Línea input
-	li	$v0,11
-	li	$a0,0x24
-	syscall	#print_char
-	
+	jal	printDolar
 	li	$a1,1
 	jal	printEspacio
 	

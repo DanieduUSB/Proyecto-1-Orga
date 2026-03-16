@@ -274,10 +274,10 @@ _bcpLoop:	beq	$v1,$k1,_bcpEndLoop
 		lb	$t0,9($v1)
 		j	_bcpLoop
 _bcpEndLoop:
-	# Si $t0 es menor que $a2, significa que la última cita del día está antes que la hora a printear. Caso 5
-	blt	$t0,$a2,_bcpCaso5
-	# Si $t0 es igual a $a2, significa que la hora se encuentra sobre la primera línea de una cita, cae caso 1
-	beq	$t0,$a2,_bcpCaso1
+	# Si $a2 es menor que $t0, significa que la última cita del día está después que la hora a printear. Caso 5
+	blt	$a2,$t0,_bcpCaso5
+	# Si $t0 es igual a $a2, significa que la hora se encuentra sobre la primera línea de una cita, cae caso 0
+	beq	$t0,$a2,_bcpCaso0
 	#Cargamos hora de finalización de la cita seleccionada en $t1
 	lb	$t1,10($v1)
 	#Si $a2 es mayor que $t1, significa que la hora está fuera de la cita en cualquiera de sus posiciones. Caso 5
@@ -294,12 +294,12 @@ _bcpEndLoop:
 	#Si no, es igual a 2, debemos ver qué ocurre para elegir el caso a realizar
 	lb	$t0,44($v1)
 	sne	$t4,$t0,0
-	seq	$t5,$a2,$t3
-	and	$t6,$t4,$t5
+	seq	$t1,$a2,$t1
+	and	$t3,$t4,$t1
 	#Si hay que imprimir la 2da parte del string y estamos en la línea inferior, cae en Caso 4
-	beq	$t6,1,_bcpCaso4
+	beq	$t3,1,_bcpCaso4
 	#Si no hay que imprimir 2da parte del string pero estamos en la línea inferior, cae en Caso 3
-	beq	$t5,1,_bcpCaso3
+	beq	$t1,1,_bcpCaso3
 	#Si no estamos en la línea inferior pero hay que imprimir 2da parte del string, cae Caso 1
 	beq	$t4,1,_bcpCaso1
 	#Si no se cumple nada de lo anterior, no hay que imprimir 2da parte del string y estamos en la línea intermedia. Caso 2
@@ -309,23 +309,26 @@ _bcpDuracionMayor2:
 	#Si la hora está en el límite inferior, caso 3
 	beq	$a2,$t1,_bcpCaso3
 	addi	$t0,$t0,1
-	lb	$t3,44($v0)
+	lb	$t3,44($v1)
 	sne	$t4,$t3,0
-	seq	$t5,$a2,$t0
-	and	$t6,$t4,$t5
+	seq	$t1,$a2,$t0
+	and	$t3,$t4,$t1
 	#Si hay que printear la 2da parte del string y estamos en la línea inmediatamente siguiente a la hora inicial, caso 1
-	beq	$t6,1,_bcpCaso1
+	beq	$t3,1,_bcpCaso1
 	#Si no hay que printear la 2da parte del string, pero estamos en la línea inmediatamente siguiente a la hora inicial, caso 2
-	beq	$t5,1,_bcpCaso2
+	beq	$t1,1,_bcpCaso2
 	
 	addi	$t0,$t0,1
-	seq	$t5,$a2,$t0
-	and	$t6,$t4,$t5
+	seq	$t1,$a2,$t0
+	and	$t3,$t4,$t1
 	#Si hubo que printear la 2da parte del string y estamos 2 líneas después de la hora inicial, caso 2
-	beq	$t6,1,_bcpCaso2
+	beq	$t3,1,_bcpCaso2
 	#En cualquier otra situación, caso 6
 	j	_bcpCaso6
-	
+
+_bcpCaso0:
+	li	$a3,0
+	jr	$ra
 _bcpCaso1:
 	li	$a3,1
 	jr 	$ra
@@ -344,3 +347,80 @@ _bcpCaso5:
 _bcpCaso6:
 	li	$a3,6
 	jr	$ra
+
+#Verifica si hay que cambiar las direcciones de memoria de $k0 y $k1 a causa de haber creado una nueva cita.
+# $k0 es la dirección de memoria de la cita mas temprana del día seleccionado
+# $k1 es la dirección de memoria de la cita mas tarde del día seleccionado
+arreglarCitasDia:
+	beqz	$k0,_acdCitaEnAmbos
+	#Tomamos las horas iniciales de las citas
+	lb	$t0,9($k0)
+	lb	$t1,9($s1)
+	#Si la hora inicial de la cita creada es menor que la cita de $k0, hay que estalecer la cita creada como $k0
+	blt	$t1,$t0,_acdCitaEnK0
+	
+	lb	$t0,9($k1)
+	#Si la hora inicial de la cita creada es mayor que la de la cita de $k1, hay que estalecer la cita creada como $k1
+	bgt	$t1,$t0,_acdCitaEnK1
+	
+	#En caso contrario, se dejan $k0 y $k1 como estan
+	jr	$ra
+
+_acdCitaEnK0:
+	move	$k0,$s1
+	jr	$ra
+	
+_acdCitaEnK1:
+	move	$k1,$s1
+	jr	$ra
+	
+_acdCitaEnAmbos:
+	move	$k0,$s1
+	j	_acdCitaEnK1
+	
+#Verifica si hay que cambiar las direcciones de memoria de $k0 y $k1 a causa de haber borrado una cita.
+# $s1 es la dirección de la cita próxima a borrar
+# $k0 es la dirección de memoria de la cita mas temprana del día seleccionado
+# $k1 es la dirección de memoria de la cita mas tarde del día seleccionado
+arreglarCitasDiaBorrar:
+	beq	$s1,$k0,_acdbCambiarK0
+	beq	$s1,$k1,_acdbCambiarK1
+	jr	$ra
+
+_acdbCambiarK0:
+	beqz	$s0,_acdbK0Cero
+	lb	$t0,8($s0)
+	bne	$t0,$s3,_acdbK0Cero
+	move	$k0,$s0
+	beq	$s1,$k0,_acdbCambiarK1
+	
+	_acdbK0Cero:
+		li	$k0,0
+		beq	$s1,$k1,_acdbCambiarK1
+	
+_acdbCambiarK1:
+	beqz	$s2,_acdbK1Cero
+	lb	$t0,8($s2)
+	bne	$t0,$s3,_acdbK1Cero
+	move	$k1,$s2
+	jr	$ra
+	
+	_acdbK1Cero:
+		li	$k1,0
+		jr	$ra
+
+#Verifica si está parado en una cita para borrarla, en caso afirmativo, borra la cita, en caso contrario, lanza un error
+borrarCitaCheck:
+	bnez	$s1,borrarCita
+	
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
+	
+	li	$v0,4
+	la	$a0,error
+	syscall	#print_string
+	
+	jal	printSaltoLinea
+	
+	j	programa

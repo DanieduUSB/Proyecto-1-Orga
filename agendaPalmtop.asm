@@ -1,5 +1,8 @@
 .data
 duracion:	.asciiz "Duración: "
+duracionMenu:	.asciiz	"Duración? (S/N)"
+confirmar:	.asciiz "Confirmar? (S/N)"
+error:		.asciiz "Error. Cancelando"
 dias:		.asciiz	"lun"
 			"mar"
 			"mie"
@@ -58,22 +61,17 @@ j main
 .include "acciones.asm"
 .include "agendar.asm"
 .include "input.asm"
-	
+
 main:
 jal	cargarMeses
 jal	fechaActual
-li	$s3,290
+li	$s3,2
+li	$t9,3
+
+programa:
+li	$t5,-1
+li	$t6,-1
+li	$t7,-1
 jal	printMenu
-
-jal	mesSig
-
-jal	printMenu
-
-jal	mesSig
-
-jal	printMenu
-
-jal	mesSig
-
-jal	printMenu
+j	funcionInput
 
