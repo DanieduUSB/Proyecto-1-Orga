@@ -88,6 +88,13 @@ _div64EndLoop:
 _div64End:
 jr	$ra
 
+#Resta el número de 64 bits $a1:$a0 menos el número unsigned de 32 bits $a2. Guarda el resultado en $a1:$a0
+sub64:
+	sltu	$t0,$a0,$a2 #Si la parte baja del minuendo es menor que el sustraendo, hay acarreo y lo marca en $t0
+	subu	$a0,$a0,$a2 #Resta la parte baja del minuendo con el sustraendo
+	subu	$a1,$a1,$t0 #Resta el acarreo de la parte alta del minuendo
+jr	$ra
+
 #Encuentra el día y fecha actual a partir del syscall 30. Guarda la fecha en los registros $s4-$s7 tal que:
 # $s4 contiene el día de la semana (Un número del 0 al 6 donde 0 es lunes, 1 es martes, .., 6 es domingo)
 # $s5 contiene el número del día
@@ -100,7 +107,12 @@ addiu	$sp,$sp,4
 	li	$v0,30
 	syscall #system_time
 	
-	#Se divide el número de 64 bits resultante entre 86400000 para convertir de milisegundos a días. Esto nos da el número
+	#Se resta 14.400.000 para poder obtener los milisegundos desde el 1ro de enero de 1970 en GMT-4, ya que syscall 30 usa
+	# como referencia GMT
+	li	$a2,14400000
+	jal	sub64
+	
+	#Se divide el número de 64 bits resultante entre 86.400.000 para convertir de milisegundos a días. Esto nos da el número
 	# de días desde el 1ro de enero de 1970 hasta hoy en $a0
 	li	$a2,86400000
 	jal	div64Bits
@@ -235,3 +247,97 @@ endMdActual:
 subiu	$sp,$sp,4
 lw	$ra,($sp)
 jr	$ra
+
+#Busca una cita, si existe, que corresponda al día de la agenda y a la hora indicada en $a2 (Considerando que 0=6am, 1=7am, ..,
+# 15=9pm). Utiliza $k0 y $k1 como direcciones límites en la lista para iterar, es decir, $k0 representa la primera cita del día
+# seleccionado y $k1 la última cita. Guarda la dirección de la cita en $v1 y el formato de la línea a imprimir en $a3, donde el
+# formato es un número tal que:
+#  0: La hora inicial y los primeros 15 caracteres de la cita.
+#  1: Los siguientes caracteres de la cita.
+#  2: La hora final
+#  3: El límite inferior
+#  4: La hora final sobre el límite inferior
+#  5: Línea normal sin cita
+#  6: Línea con cita pero sin texto
+buscarCitaPrint:
+	#Si $k0==0, no hay citas en el día actual seleccionado, por lo que se cae en el caso 5
+	beqz	$k0,_bcpCaso5
+	
+	move	$v1,$k0
+	lb	$t0,9($v1)
+_bcpLoop:	beq	$v1,$k1,_bcpEndLoop
+		bge	$t0,$a2,_bcpEndLoop
+		lw	$v1,4($v1)
+		lb	$t0,9($v1)
+		j	_bcpLoop
+_bcpEndLoop:
+	# Si $t0 es menor que $a2, significa que la última cita del día está antes que la hora a printear. Caso 5
+	blt	$t0,$a2,_bcpCaso5
+	# Si $t0 es igual a $a2, significa que la hora se encuentra sobre la primera línea de una cita, cae caso 1
+	beq	$t0,$a2,_bcpCaso1
+	#Cargamos hora de finalización de la cita seleccionada en $t1
+	lb	$t1,10($v1)
+	#Si $a2 es mayor que $t1, significa que la hora está fuera de la cita en cualquiera de sus posiciones. Caso 5
+	bgt	$a2,$t1,_bcpCaso5
+	#Duración de la cita
+	sub	$t3,$t1,$t0
+	
+	#Si la duración es mayor que 2, se trata por aparte
+	bgt	$t3,2,_bcpDuracionMayor2
+	
+	#Si es igual a 1, estamos parados en el límite inferior y cae directamente en el caso 4
+	beq	$t3,1,_bcpCaso4
+	
+	#Si no, es igual a 2, debemos ver qué ocurre para elegir el caso a realizar
+	lb	$t0,44($v1)
+	sne	$t4,$t0,0
+	seq	$t5,$a2,$t3
+	and	$t6,$t4,$t5
+	#Si hay que imprimir la 2da parte del string y estamos en la línea inferior, cae en Caso 4
+	beq	$t6,1,_bcpCaso4
+	#Si no hay que imprimir 2da parte del string pero estamos en la línea inferior, cae en Caso 3
+	beq	$t5,1,_bcpCaso3
+	#Si no estamos en la línea inferior pero hay que imprimir 2da parte del string, cae Caso 1
+	beq	$t4,1,_bcpCaso1
+	#Si no se cumple nada de lo anterior, no hay que imprimir 2da parte del string y estamos en la línea intermedia. Caso 2
+	j	_bcpCaso2
+	
+_bcpDuracionMayor2:
+	#Si la hora está en el límite inferior, caso 3
+	beq	$a2,$t1,_bcpCaso3
+	addi	$t0,$t0,1
+	lb	$t3,44($v0)
+	sne	$t4,$t3,0
+	seq	$t5,$a2,$t0
+	and	$t6,$t4,$t5
+	#Si hay que printear la 2da parte del string y estamos en la línea inmediatamente siguiente a la hora inicial, caso 1
+	beq	$t6,1,_bcpCaso1
+	#Si no hay que printear la 2da parte del string, pero estamos en la línea inmediatamente siguiente a la hora inicial, caso 2
+	beq	$t5,1,_bcpCaso2
+	
+	addi	$t0,$t0,1
+	seq	$t5,$a2,$t0
+	and	$t6,$t4,$t5
+	#Si hubo que printear la 2da parte del string y estamos 2 líneas después de la hora inicial, caso 2
+	beq	$t6,1,_bcpCaso2
+	#En cualquier otra situación, caso 6
+	j	_bcpCaso6
+	
+_bcpCaso1:
+	li	$a3,1
+	jr 	$ra
+_bcpCaso2:
+	li	$a3,2
+	jr 	$ra
+_bcpCaso3:
+	li	$a3,3
+	jr 	$ra
+_bcpCaso4:
+	li	$a3,4
+	jr 	$ra
+_bcpCaso5:
+	li	$a3,5
+	jr	$ra
+_bcpCaso6:
+	li	$a3,6
+	jr	$ra
