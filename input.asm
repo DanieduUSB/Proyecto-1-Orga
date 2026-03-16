@@ -30,10 +30,9 @@ _fiLeerInput:
 	jal	printSaltoLinea
 	jal	arreglarInput
 	
-	#$t3 es el iterador
+	#$t3 es el iterador y $t0 almacena el byte a verificar
 	li	$t3,0
-	lw	$t0,input
-	lb	$t0,($t0)
+	lb	$t0,input
 	
 	#$t8 lleva la cuenta de cuántas veces se debe mover la hora de ser necesario
 	li	$t8,0
@@ -48,6 +47,8 @@ _fiLeerInput:
 	beq	$t0,0x3e,dsVerif
 	
 	#Verifica si se debe ir al día anterior
+	#Si no, verifica si se debe ir a un día anterior específico
+	#Si no, verifica si se debe ir al mes anterior
 	beq	$t0,0x3c,dpVerif
 	
 	#Verifica si debe ir al siguiente día indicado
@@ -59,36 +60,36 @@ _fiLeerInput:
 	beq	$t0,0x44,sigDomVerif
 	
 	#Verifica si se debe ir al mes siguiente
-	beq	$t0,0x2d,mesPrev
+	beq	$t0,0x2d,mesSigVerif
+	
+	#Verifica si se debe borrar una cita
+	beq	$t0,0x64,delVerif
+	
+	#Si no inicia con un carácter de un comando, salta a agendar
+	j	agendar
 	
 	#Verifica si se debe mover el cursor de la hora a una anterior y guarda cuántas veces se debe mover en $t8
 	horaPrevLoop:
 		addi	$t8,$t8,1
-		addi 	$t3,$t3,1
-		lw	$t0,input($t3)
-		lb	$t0,($t0)
+		jal	verifChar
 		beq	$t0,0x5e,horaPrevLoop
 	endHoraPrevLoop:
+		jal	verifChar
+		beqz	$t0,horaPrev
 		j	agendar
 	
 	#Verifica si se debe mover el cursor de la hora a una siguiente y guarda cuántas veces se debe mover en $t8
 	horaSigLoop:
 		addi	$t8,$t8,1
-		addi 	$t3,$t3,1
-		lw	$t0,input($t3)
-		lb	$t0,($t0)
+		jal	verifChar
 		beq	$t0,0x76,horaSigLoop
 	endHoraSigLoop:
+		jal	verifChar
+		beqz	$t0,horaSig
 		j	agendar
 		
-	#Verifica si se debe borrar una cita
-	beq	$t0,0x64,delVerif
-	
 _contInput:	
 	#Verifica si se debe ir al día anterior indicado
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
 	beq	$t0,0x4c,lunPrevVerif 
 	beq	$t0,0x4d,marPrevVerif
 	beq	$t0,0x4a,juePrevVerif
@@ -97,141 +98,124 @@ _contInput:
 	beq	$t0,0x44,domPrevVerif
 	
 	#Verifica si se debe ir al mes anterior
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x2d,mesPrevVerif	
-	
+	bne	$t0,0x2d,agendar
+	jal	verifChar
+	beqz	$t0,mesPrev
+	j	agendar
+
+#Verifica si se debe ir al día siguiente
 dsVerif:	
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
+	jal	verifChar
 	beqz	$t0,diaSig
-	
+	j	agendar
+
+#Verifica si se debe ir al día anterior
 dpVerif:	
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
+	jal	verifChar
 	beqz	$t0,diaPrev
+	#Verifica otros casos de input que inician con "<"
 	j	_contInput
+
+#Verifica si se debe ir al mes siguiente
+mesSigVerif:
+	jal	verifChar
+	bne	$t0,0x3e,agendar
+	jal	verifChar
+	beqz	$t0,mesSig
+	j	agendar
 
 #Verifica si se debe ir al siguiente lunes
 sigLunVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x3e,sigLun
+	jal	verifChar
+	bne	$t0,0x3e,agendar
+	jal	verifChar
+	beqz	$t0,sigLun
 	j	agendar
 	
 #Verifica si se debe ir al siguiente martes
 sigMarVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x3e,sigMar
+	jal	verifChar
+	bne	$t0,0x3e,agendar
+	jal	verifChar
+	beqz	$t0,sigMar
 	j	agendar
 
 #Verifica si se debe ir al siguiente jueves
 sigJueVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x3e,sigJue
+	jal	verifChar
+	bne	$t0,0x3e,agendar
+	jal	verifChar
+	beqz	$t0,sigJue
 	j	agendar
 
 #Verifica si se debe ir al siguiente viernes
 sigVieVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x3e,sigVie
+	jal	verifChar
+	bne	$t0,0x3e,agendar
+	jal	verifChar
+	beqz	$t0,sigVie
 	j	agendar
 	
 #Verifica si se debe ir al siguiente sábado
 sigSabVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x3e,sigSab
+	jal	verifChar
+	bne	$t0,0x3e,agendar
+	jal	verifChar
+	beqz	$t0,sigSab
 	j	agendar
 
 #Verifica si se debe ir al siguiente domingo
 sigDomVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x3e,sigDom
+	jal	verifChar
+	bne	$t0,0x3e,agendar
+	jal	verifChar
+	beqz	$t0,sigDom
 	j	agendar
 	
 #Verifica si se debe ir al lunes anterior
 lunPrevVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x4c,lunPrev
+
+	jal	verifChar
+	beqz	$t0,lunPrev
 	j	agendar
 	
 #Verifica si se debe ir al martes anterior
 marPrevVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x4d,marPrev
+	jal	verifChar
+	beqz	$t0,marPrev
 	j	agendar
 
 #Verifica si se debe ir al jueves anterior
 juePrevVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x4a,juePrev
+	jal	verifChar
+	beqz	$t0,juePrev
 	j	agendar
 
 #Verifica si se debe ir al viernes anterior
 viePrevVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x56,viePrev
+	jal	verifChar
+	beqz	$t0,viePrev
 	j	agendar
 	
 #Verifica si se debe ir al sábado anterior
 sabPrevVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x53,sabPrev
+	jal	verifChar
+	beqz	$t0,sabPrev
 	j	agendar
 
 #Verifica si se debe ir al domingo anterior
 domPrevVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x44,domPrev
-	j	agendar
-
-#Verifica si se debe ir al mes anterior
-mesPrevVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
-	beq	$t0,0x3e,mesPrev
+	jal	verifChar
+	beqz	$t0,domPrev
 	j	agendar
 
 #Verifica si se debe borrar una cita
 delVerif:
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
+	jal	verifChar
 	bne	$t0,0x65,agendar
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
+	jal	verifChar
 	bne	$t0,0x6c,agendar
-	addi	$t3,$t3,1
-	lw	$t0,input($t3)
-	lb	$t0,($t0)
+	jal	verifChar
 	beqz	$t0,borrarCita
 
 	j	agendar

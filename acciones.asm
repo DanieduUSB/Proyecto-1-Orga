@@ -13,7 +13,7 @@ horaSig:
 	subi	$t8,$t8,1
 	j	horaSig
 endHoraSig:
-jr	$ra
+j	programa
 
 #Resta en 1 el cursor de la línea actual (el asterisco del menú - $t9) el número de veces indicado en &t8, o hasta que $t9 sea 0
 horaPrev:
@@ -23,30 +23,25 @@ horaPrev:
 	subi	$t8,$t8,1
 	j	horaPrev
 endHoraPrev:
-jr	$ra
-
-#En base al input, revisa si debe hacer la instrucción de horaPrev, y cuántas veces en tal caso. Si sí debe hacerla, la ejecuta,
-# en caso contrario salta a la instrucción agendar
-checkHoraPrev:
-endCheckHoraPrev:
+j	programa
 
 #Mueve el día actual al siguiente.
 diaSig:
 	addi	$s3,$s3,1
 endDiaSig:
-jr	$ra
+j	programa
 
 #Mueve el día actual al anterior.
 diaPrev:
 	subi	$s3,$s3,1
 endDiaPrev:
-jr	$ra
+j	programa
 
 #Mueve el día actual al siguiente lunes
 sigLun:	
 	#Se calcula el día actual
 	jal	diaAct
-	li	$t1,0
+	li	$t1,7
 	sub	$t1,$t1,$t5
 	add	$s3,$s3,$t1
 j	programa
@@ -115,7 +110,7 @@ sigDom:
 	blt	$t5,6,restarSemD
 	j	_sigDom
 	#Se resta una semana cuando se está en la misma semana
-	restarSemS:
+	restarSemD:
 		subi	$t1,$t1,7
 _sigDom:
 	sub	$t1,$t1,$t5
@@ -153,7 +148,7 @@ juePrev:
 	bgt	$t5,$t1,resSemJ
 	j	_semPrevJ
 	#Se resta una semana cuando se está en la misma semana
-	resSemM:
+	resSemJ:
 		subi	$t1,$t1,7
 _semPrevJ:
 	add	$t1,$t1,$t5
@@ -204,9 +199,6 @@ j	programa
 
 #Mueve el día actual al mismo día del mes siguiente
 mesSig:
-	sw 	$ra,($sp)
-	addiu	$sp,$sp,4
-	
 	#Se calcula el día y mes actuales
 	jal	mdActual
 	
@@ -235,15 +227,10 @@ _contSig:
 		j	_contSig
 	
 endMesSig:
-subiu	$sp,$sp,4
-lw	$ra,($sp)
-jr	$ra
+j	programa
 
 #Mueve el día actual al mismo día del mes anterior
 mesPrev:
-	sw 	$ra,($sp)
-	addiu	$sp,$sp,4
-	
 	#Se calcula el día y mes actuales
 	jal	mdActual
 	
@@ -273,10 +260,4 @@ _contPrev:
 		j	_contPrev
 	
 endMesPrev:
-subiu	$sp,$sp,4
-lw	$ra,($sp)
-jr	$ra
-
-#Borra una cita agendada
-borrarCita:
-endBorrarCita:
+j	programa
