@@ -24,9 +24,10 @@ _fiLimpiarInputAux:
 _fiLeerInput:
 	li	$v0,8
 	la	$a0,input
-	li	$a1,30
+	li	$a1,31
 	syscall	#read_string
 	
+	jal	printSaltoLinea
 	jal	arreglarInput
 	
 #IMPORTANTE: Colocar acá que funciones llamar en base al input
