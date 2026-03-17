@@ -11,8 +11,10 @@ horaSig:
 	beq	$t9,15,endHoraSig
 	addi	$t9,$t9,1
 	subi	$t8,$t8,1
+	jal	citaHoraSig
 	j	horaSig
 endHoraSig:
+jal	fixHoraSig
 j	programa
 
 #Resta en 1 el cursor de la línea actual (el asterisco del menú - $t9) el número de veces indicado en &t8, o hasta que $t9 sea 0
@@ -21,19 +23,23 @@ horaPrev:
 	beqz	$t9,endHoraPrev
 	subi	$t9,$t9,1
 	subi	$t8,$t8,1
+	jal	citaHoraPrev
 	j	horaPrev
 endHoraPrev:
+jal	fixHoraPrev
 j	programa
 
 #Mueve el día actual al siguiente.
 diaSig:
 	addi	$s3,$s3,1
+	jal	citaDiaSig
 endDiaSig:
 j	programa
 
 #Mueve el día actual al anterior.
 diaPrev:
 	subi	$s3,$s3,1
+	jal	citaDiaPrev
 endDiaPrev:
 j	programa
 
@@ -44,6 +50,7 @@ sigLun:
 	li	$t1,7
 	sub	$t1,$t1,$t4
 	add	$s3,$s3,$t1
+jal	citaDiaSig
 j	programa
 
 #Mueve el día actual al siguiente martes
@@ -55,11 +62,11 @@ sigMar:
 	j	_sigMar
 	#Se suma un solo día si es lunes
 	diaPrevM:
-		addi	$s3,$s3,1
-		j	programa
+		li	$t1,1
 _sigMar:
 	sub	$t1,$t1,$t4
 	add	$s3,$s3,$t1
+jal	citaDiaSig
 j	programa
 
 sigJue:
@@ -74,6 +81,7 @@ sigJue:
 _sigJue:
 	sub	$t1,$t1,$t4
 	add	$s3,$s3,$t1
+jal	citaDiaSig
 j	programa
 
 sigVie:
@@ -88,6 +96,7 @@ sigVie:
 _sigVie:
 	sub	$t1,$t1,$t4
 	add	$s3,$s3,$t1
+jal	citaDiaSig
 j	programa
 
 sigSab:
@@ -102,6 +111,7 @@ sigSab:
 _sigSab:
 	sub	$t1,$t1,$t4
 	add	$s3,$s3,$t1
+jal	citaDiaSig
 j	programa
 
 sigDom:
@@ -116,6 +126,7 @@ sigDom:
 _sigDom:
 	sub	$t1,$t1,$t4
 	add	$s3,$s3,$t1
+jal	citaDiaSig
 j	programa
 
 #Mueve el día actual al lunes previo
@@ -127,6 +138,7 @@ lunPrev:
 	li	$t1,7
 _lunPrev:	
 	sub	$s3,$s3,$t1
+jal	citaDiaPrev
 j	programa
 
 #Mueve el día actual al martes previo
@@ -139,6 +151,7 @@ marPrev:
 	addi	$t1,$t1,7
 _marPrev:
 	sub	$s3,$s3,$t1
+jal	citaDiaPrev
 j	programa
 
 juePrev:
@@ -150,6 +163,7 @@ juePrev:
 	addi	$t1,$t1,7
 _juePrev:
 	sub	$s3,$s3,$t1
+jal	citaDiaPrev
 j	programa
 
 viePrev:
@@ -161,6 +175,7 @@ viePrev:
 	addi	$t1,$t1,7
 _viePrev:
 	sub	$s3,$s3,$t1
+jal	citaDiaPrev
 j	programa
 
 sabPrev:
@@ -172,6 +187,7 @@ sabPrev:
 	addi	$t1,$t1,7
 _sabPrev:
 	sub	$s3,$s3,$t1
+jal	citaDiaPrev
 j	programa
 
 domPrev:
@@ -183,6 +199,7 @@ domPrev:
 	addi	$t1,$t1,7
 _domPrev:
 	sub	$s3,$s3,$t1
+jal	citaDiaPrev
 j	programa
 
 #Mueve el día actual al mismo día del mes siguiente
@@ -215,6 +232,7 @@ _contSig:
 		j	_contSig
 	
 endMesSig:
+jal	citaDiaSig
 j	programa
 
 #Mueve el día actual al mismo día del mes anterior
@@ -248,4 +266,5 @@ _contPrev:
 		j	_contPrev
 	
 endMesPrev:
+jal	citaDiaPrev
 j	programa

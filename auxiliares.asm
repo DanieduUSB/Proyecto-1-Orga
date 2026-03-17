@@ -171,6 +171,7 @@ addiu	$sp,$sp,4
 	bgez	$t4,seguir
 	#Si $t4 es un número negativo, se le suma 7 para obtener el día de la semana
 	addi	$t4,$t4,7
+	
 seguir:	
 	#Se suma el desplazamiento del día 0
 	add	$t4,$t4,$s4
@@ -285,10 +286,29 @@ _bcpLoop:	beq	$v1,$k1,_bcpEndLoop
 		lb	$t0,9($v1)
 		j	_bcpLoop
 _bcpEndLoop:
-	# Si $a2 es menor que $t0, significa que la última cita del día está después que la hora a printear. Caso 5
-	blt	$a2,$t0,_bcpCaso5
+	# Si $a2 es menor que $t0, hay que verificar citas anteriores
+	blt	$a2,$t0,_bcpVerificarAnterior
 	# Si $t0 es igual a $a2, significa que la hora se encuentra sobre la primera línea de una cita, cae caso 0
 	beq	$t0,$a2,_bcpCaso0
+	j	_bcpVerificarSiguiente
+_bcpVerificarAnterior:
+	#Si $v1 == $k0, $v1 es la primera cita del día, por lo tanto en líneas anteriores no hay citas. Caso 5
+	beq	$v1,$k0,_bcpCaso5
+	
+	#Carga la dirección anterior a $v1. Si es 0, no hay citas anteriores a $v1, vuelve a caer en Caso 5
+	lw	$t1,($v1)
+	beqz	$t1,_bcpCaso5
+	
+	#En caso contrario, tomamos la hora final de la cita anterior. Si $a2 > $t1, entonces la línea actual está después de la
+	# cita anterior, caso 5
+	lb	$t1,10($t1)
+	bgt	$a2,$t1,_bcpCaso5
+	
+	#En caso contrario, se toma $v1 como su anterior y se verifica en las siguientes líneas
+	lw	$v1,($v1)
+	lb	$t0,9($v1)
+	
+_bcpVerificarSiguiente:
 	#Cargamos hora de finalización de la cita seleccionada en $t1
 	lb	$t1,10($v1)
 	#Si $a2 es mayor que $t1, significa que la hora está fuera de la cita en cualquiera de sus posiciones. Caso 5
@@ -394,31 +414,51 @@ _acdCitaEnAmbos:
 # $k0 es la dirección de memoria de la cita mas temprana del día seleccionado
 # $k1 es la dirección de memoria de la cita mas tarde del día seleccionado
 arreglarCitasDiaBorrar:
+	#Verifica si $s1 es la primera o última cita del día para ver que tipo de acción tomar. Si no es ninguna de las dos, no
+	# hace nada
 	beq	$s1,$k0,_acdbCambiarK0
 	beq	$s1,$k1,_acdbCambiarK1
 	jr	$ra
 
 _acdbCambiarK0:
-	beqz	$s0,_acdbK0Cero
-	lb	$t0,8($s0)
+	#Carga el siguiente de $k0 para ver que ocurre. Si $k0 es 0, no hay siguiente en la lista, por lo que no hay mas citas en
+	# el día actual y establece $k1 como 0 también
+	lw	$k0,4($k0)
+	beqz	$k0,_acdbK1Cero
+	
+	#Si el nuevo $k0 == $k1, es la única cita del día luego de borrar $s1, por lo que termina el programa
+	beq	$k0,$k1,_acdbEnd
+	
+	#Si no, toma el número de días desde el día 0 de la cita y verifica que sea igual al actual. Si son distintos, no hay mas
+	# citas en el día actual, por lo que establece $k0 y $k1 en 0
+	lb	$t0,8($k0)
 	bne	$t0,$s3,_acdbK0Cero
-	move	$k0,$s0
-	beq	$s1,$k0,_acdbCambiarK1
+	
+	#En caso contrario, la cita en $k0 es válida y la cita en $k1 también debe serlo ya que es al menos una cita siguiente a
+	# la que se guardaba anteriormente en $k0, por lo que termina la ejecución
+	j	_acdbEnd
 	
 	_acdbK0Cero:
 		li	$k0,0
-		beq	$s1,$k1,_acdbCambiarK1
+		#Si $k0 es 0, $k1 debe serlo también
+		j	_acdbK1Cero
 	
-_acdbCambiarK1:
-	beqz	$s2,_acdbK1Cero
-	lb	$t0,8($s2)
-	bne	$t0,$s3,_acdbK1Cero
-	move	$k1,$s2
-	jr	$ra
+_acdbCambiarK1: #Este caso toma en cuenta que $k0 != $k1, ya que en caso contrario, habría caído en el caso _acdbCambiarK0 porque
+		# si $k0 == $k1 y $k1 == $s1, entonces $k0 == $s1 => Caso anterior
+		
+	#Carga el anterior a $k1 en $k1
+	lw	$k1,($k1)
 	
+	#Si son	iguales o distintos termina la ejecución puesto que la nueva dirección de $k1 es igual a $k0 o es distinta pero
+	# está en una hora superior a $k0 en el mismo día
+	j	_acdbEnd
+
 	_acdbK1Cero:
 		li	$k1,0
 		jr	$ra
+
+_acdbEnd:
+	jr	$ra
 
 #Verifica si está parado en una cita para borrarla, en caso afirmativo, borra la cita, en caso contrario, lanza un error
 borrarCitaCheck:
@@ -435,3 +475,315 @@ borrarCitaCheck:
 	jal	printSaltoLinea
 	
 	j	programa
+
+#Actualiza los registros $s0, $s1 y $s2 que contienen la cita anterior, la actual y la siguiente, respectivamente, para la acción
+# de mover hacia una hora posterior (Aumentar el valor de $t9)
+citaHoraSig:
+	#Si $s1 es 0, antes de mover el cursor no se estaba parado sobre una cita, por lo que verifica si la siguiente posición
+	# está parada sobre una cita
+	beqz	$s1,_chsCheckSiguiente
+	
+	#Si no, el puntero $t9 se encuentra dentro de la cita o inmediatamente fuera de la cita. Verificamos con la hora final
+	# de la cita $s1 para ver si hay que salir de la cita actual o no. Si $t9 <= $t0, termina la ejecución
+	lb	$t0,10($s1)
+	ble	$t9,$t0,_chsEnd
+	
+	#Si $t9 > $t0, salimos de la cita actual $s1, la marcamos como anterior (la movemos a $s0) y hay que verificar si estamos
+	# parados sobre una cita siguiente
+	move	$s0,$s1
+	li	$s1,0
+	
+_chsCheckSiguiente:
+	#Si $s2 es 0, no hay cita siguiente a $s1, por lo que no hay nada que verificar
+	beqz	$s2,_chsEnd
+	
+	#Si no, se verifica que la siguiente cita esté en el mismo día. Si no lo está, termina la ejecución
+	lb	$t0,8($s2)
+	bne	$t0,$s3,_chsEnd
+	
+	#Si la cita está en el mismo día, el puntero $t9 se encuentra antes de la hora inicial o en la hora inicial de la siguiente
+	# cita. Si está antes ($t9 != $t0) no hay cita en la posición actual, termina la ejecución
+	lb	$t0,9($s2)
+	bne	$t0,$t9,_chsEnd
+	
+	#Si están en la misma posición, entonces $s2 es ahora la cita actual, se asigna como $s1 y $s2 se asigna al siguiente de $s2
+	move	$s1,$s2
+	lw	$s2,4($s2)
+
+_chsEnd:
+	jr	$ra
+
+#Actualiza los registros $s0, $s1 y $s2 que contienen la cita anterior, la actual y la siguiente, respectivamente, para la acción
+# de mover hacia una hora previa (Disminuir el valor de $t9)
+citaHoraPrev:
+	#Si $s1 es 0, antes de mover el cursor no se estaba parado sobre una cita, por lo que verifica si la posición anterior
+	# está parada sobre una cita
+	beqz	$s1,_chpCheckAnterior
+	
+	#Si no, el puntero $t9 se encuentra dentro de la cita o inmediatamente fuera de la cita. Verificamos con la hora inicial
+	# de la cita $s1 para ver si hay que salir de la cita actual o no. Si $t9 >= $t0, termina la ejecución
+	lb	$t0,9($s1)
+	bge	$t9,$t0,_chpEnd
+	
+	#Si $t9 < $t0, salimos de la cita actual $s1, la marcamos como siguiente (la movemos a $s2) y hay que verificar si estamos
+	# parados sobre una cita anterior
+	move	$s2,$s1
+	li	$s1,0
+	
+_chpCheckAnterior:
+	#Si $s0 es 0, no hay cita anterior a $s1, por lo que no hay nada que verificar
+	beqz	$s0,_chpEnd
+	
+	#Si no, se verifica que la cita anterior esté en el mismo día. Si no lo está, termina la ejecución
+	lb	$t0,8($s0)
+	bne	$t0,$s3,_chpEnd
+	
+	#Si la cita está en el mismo día, el puntero $t9 se encuentra después de la hora final o en la hora final de la cita
+	# anterior. Si está después ($t9 != $t0) no hay cita en la posición actual, termina la ejecución
+	lb	$t0,10($s0)
+	bne	$t0,$t9,_chpEnd
+	
+	#Si están en la misma posición, entonces $s0 es ahora la cita actual, se asigna como $s1 y $s0 se asigna al anterior de $s0
+	move	$s1,$s0
+	lw	$s0,($s0)
+
+_chpEnd:
+	jr	$ra
+	
+#Arregla la posición del puntero ($t9) a causa de haber movido la hora a una posterior y que el puntero $t9 haya caido dentro de
+# un bloque de una cita
+fixHoraSig:
+	#Si $s1 es 0, el puntero no cayó en una cita, por lo que termina la ejecución
+	beqz	$s1,_fhsEnd
+	
+	#Si el puntero está en la hora inicial de la cita, se queda en el mismo punto y termina la ejecución
+	lb	$t0,9($s1)
+	beq	$t0,$t9,_fhsEnd
+	
+	#En caso contrario, se debe mover el puntero una hora después de la hora final de la cita actual, teniendo en cuenta que
+	# si esa hora es después de las 9pm, se debe dejar el puntero en la hora inicial de la cita.
+	
+	#Hora final
+	lb	$t1,10($s1)
+	addi	$t1,$t1,1
+	#Caso si la hora es mayor a 9pm
+	bgt	$t1,15,_fhsHoraInicial
+	
+	#En caso contrario, establecemos el puntero al valor de $t1 y verificamos si estamos parados en la hora inicial de una
+	# nueva cita. Además, marcamos $s1 como cita anterior
+	move	$t9,$t1
+	move	$s0,$s1
+	li	$s1,0
+	
+	#Si $s2 es 0, no hay cita siguiente a $s1, por lo que no hay nada que verificar
+	beqz	$s2,_fhsEnd
+	
+	#Si no, se verifica que la siguiente cita esté en el mismo día. Si no lo está, termina la ejecución
+	lb	$t0,8($s2)
+	bne	$t0,$s3,_fhsEnd
+	
+	#Si la cita está en el mismo día, el puntero $t9 se encuentra en la hora inicial o antes de la hora inicial de la siguiente
+	# cita. Si está antes ($t9 != $t0) no hay cita en la posición actual, termina la ejecución
+	lb	$t0,9($s2)
+	bne	$t0,$t9,_fhsEnd
+	
+	#Si están en la misma posición, entonces $s2 es ahora la cita actual, se asigna como $s1 y $s2 se asigna al siguiente de $s2
+	move	$s1,$s2
+	lw	$s2,4($s2)
+	
+	j	_fhsEnd
+	
+_fhsHoraInicial:
+	move	$t9,$t0
+	
+_fhsEnd:
+	jr	$ra
+
+#Arregla la posición del puntero ($t9) a causa de haber movido la hora a una previa y que el puntero $t9 haya caido dentro de
+# un bloque de una cita
+fixHoraPrev:
+	#Si $s1 es 0, el puntero no cayó en una cita, por lo que termina la ejecución
+	beqz	$s1,_fhpEnd
+	
+	#En caso contrario, hay que mover el puntero a la hora de inicio de la cita
+	lb	$t9,9($s1)
+_fhpEnd:
+	jr	$ra
+
+#Actualiza las direcciones de $s0, $s1, $s2, $k0 y $k1 a causa de moverse a una fecha posterior en el programa. La fecha posterior
+# ya debe haber sido actualizada en $s3
+citaDiaSig:
+sw	$ra,($sp)
+addiu	$sp,$sp,4
+
+	#Si $s1 es 0, utiliza $s0 como anterior para la lógica del loop
+	beqz	$s1,_cdsLoop
+	#En caso contrario, mueve $s1 a $s0 y lo utiliza como anterior para la lógica del loop, además, establece $s1 en 0
+	move	$s0,$s1
+	li	$s1,0
+
+#Itera hasta que consigue una cita cuya cantidad de días desde el día 0 sea mayor o igual a $s3, o hasta que $s2 sea una dirección
+# nula (igual a 0). Si lo último ocurre, entonces la última cita agendada está en un día anterior al seleccionado, por lo que
+# termina la ejecución en el caso en que no hay citas en el día actual
+_cdsLoop:	beqz	$s2,_cdsEnd0
+		lb	$t0,8($s2)
+		bge	$t0,$s3,_cdsContinuar
+		move	$s0,$s2
+		lw	$s2,4($s2)
+		j	_cdsLoop
+_cdsContinuar:
+	#Si $t0 es mayor que $t3, entonces la cita en $s2 tiene un día mayor al seleccionado y la cita en $s0 un día menor (en caso
+	# contrario $s0 habría sido tomado en cuenta como $s2 en una iteración anterior), por lo que termina la ejecución en el
+	# caso en que no hay citas en el día actual
+	bgt	$t0,$s3,_cdsEnd0
+	#Si son iguales, entonces este es el valor de $k0
+	move	$k0,$s2
+
+#En este loop se encuentra el valor exacto de $s0 y un posible valor de $s2 y $k1
+		#Si $s2 es 0, para nuestro puntero actual no hay una siguiente cita
+_cdsLoop2:	beqz	$s2,_cdsEnd
+
+		#Si la cita $s2 tiene un día distinto, entonces la siguiente cita no se encuentra en el día actual, por lo que
+		# se termina la ejecución con los valores ya tomados
+		lb	$t0,8($s2)
+		bgt	$t0,$s3,_cdsEnd
+		
+		#Si tiene el mismo día, entonces es una posible dirección de $k1 y se actualiza
+		move	$k1,$s2
+		
+		#Si la cita en $s2 tiene una hora final mayor o igual al puntero $t9, entonces podemos dar por encontrada
+		# la dirección de $s0 y continuamos para encontrar $s1, $s2 y $k1
+		lb	$t1,10($s2)
+		bge	$t1,$t9,_cdsContinuar2
+		
+		#En caso contrario, $s2 es una posible dirección de $s0 y tomamos la cita siguiente a $s2 para continuar el loop
+		move	$s0,$s2
+		lw	$s2,4($s2)
+		j	_cdsLoop2
+_cdsContinuar2:
+	#Cargamos en $t4 la dirección siguiente a $k1
+	lw	$t4,4($k1)
+	
+		#Si $t4 es 0, $k1 es la última dirección de cita correspondiente al día actual
+_cdsLoop3:	beqz	$t4,_cdsEnd2
+		lb	$t2,8($t4)
+		
+		#Si es distinto de 0 pero la cita corresponde a un día distinto, entonces el valor actual de $k1 es el correcto
+		bne	$t2,$s3,_cdsEnd2
+		
+		#En caso contrario, sigue buscando a $k1
+		move	$k1,$t4
+		lw	$t4,4($t4)
+		j	_cdsLoop3
+_cdsEnd0:
+	li	$k0,0
+	li	$k1,0
+	j	_cdsEnd
+
+#Verifica si el valor actual en $s2 pertenece a $s1
+_cdsEnd2:
+	lb	$t2,9($s2)
+	
+	#Si la hora de inicio de $s2 es mayor que la del puntero $t9, los valores quedan iguales
+	bgt	$t2,$t9,_cdsEnd
+	
+	#En caso contrario, $s2 es el valor de $s1 y se asigna $s2 con su siguiente dirección
+	move	$s1,$s2
+	lw	$s2,4($s2)
+	
+_cdsEnd:
+	#Si el puntero está en un bloque, hay que actualizarlo para moverlo a la hora inicial
+	jal	fixHoraPrev
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra
+
+#Actualiza las direcciones de $s0, $s1, $s2, $k0 y $k1 a causa de moverse a una fecha anterior en el programa. La fecha anterior
+# ya debe haber sido actualizada en $s3
+citaDiaPrev:
+sw	$ra,($sp)
+addiu	$sp,$sp,4
+
+	#Si $s1 es 0, utiliza $s2 como siguiente para la lógica del loop
+	beqz	$s1,_cdpLoop
+	#En caso contrario, mueve $s1 a $s2 y lo utiliza como siguiente para la lógica del loop, además, establece $s1 en 0
+	move	$s2,$s1
+	li	$s1,0
+
+#Itera hasta que consigue una cita cuya cantidad de días desde el día 0 sea menor o igual a $s3, o hasta que $s2 sea una dirección
+# nula (igual a 0). Si lo último ocurre, entonces la última cita agendada está en un día siguiente al seleccionado, por lo que
+# termina la ejecución en el caso en que no hay citas en el día actual
+_cdpLoop:	beqz	$s0,_cdpEnd0
+		lb	$t0,8($s0)
+		ble	$t0,$s3,_cdpContinuar
+		move	$s2,$s0
+		lw	$s0,($s0)
+		j	_cdpLoop
+_cdpContinuar:
+	#Si $t0 es menor que $t3, entonces la cita en $s0 tiene un día menor al seleccionado y la cita en $s2 un día mayor (en caso
+	# contrario $s2 habría sido tomado en cuenta como $s0 en una iteración anterior), por lo que termina la ejecución en el
+	# caso en que no hay citas en el día actual
+	blt	$t0,$s3,_cdpEnd0
+	#Si son iguales, entonces este es el valor de $k1
+	move	$k1,$s0
+
+#En este loop se encuentra el valor exacto de $s2 y un posible valor de $s0 y $k0
+		#Si $s0 es 0, para nuestro puntero actual no hay una cita anterior
+_cdpLoop2:	beqz	$s0,_cdpEnd
+
+		#Si la cita $s0 tiene un día distinto, entonces la cita anterior no se encuentra en el día actual, por lo que
+		# se termina la ejecución con los valores ya tomados
+		lb	$t0,8($s0)
+		blt	$t0,$s3,_cdpEnd
+		
+		#Si tiene el mismo día, entonces es una posible dirección de $k0 y se actualiza
+		move	$k0,$s0
+		
+		#Si la cita en $s0 tiene una hora inicial menor o igual al puntero $t9, entonces podemos dar por encontrada
+		# la dirección de $s2 y continuamos para encontrar $s1, $s0 y $k0
+		lb	$t1,9($s0)
+		ble	$t1,$t9,_cdpContinuar2
+		
+		#En caso contrario, $s0 es una posible dirección de $s2 y tomamos la cita anterior a $s0 para continuar el loop
+		move	$s2,$s0
+		lw	$s0,($s0)
+		j	_cdpLoop2
+_cdpContinuar2:
+	#Cargamos en $t4 la dirección anterior a $k0
+	lw	$t4,($k0)
+	
+		#Si $t4 es 0, $k0 es la primera dirección de cita correspondiente al día actual
+_cdpLoop3:	beqz	$t4,_cdpEnd2
+		lb	$t2,8($t4)
+		
+		#Si es distinto de 0 pero la cita corresponde a un día distinto, entonces el valor actual de $k0 es el correcto
+		bne	$t2,$s3,_cdpEnd2
+		
+		#En caso contrario, sigue buscando a $k0
+		move	$k0,$t4
+		lw	$t4,($t4)
+		j	_cdpLoop3
+_cdpEnd0:
+	li	$k0,0
+	li	$k1,0
+	j	_cdpEnd
+
+#Verifica si el valor actual en $s0 pertenece a $s1
+_cdpEnd2:
+	lb	$t2,10($s0)
+	
+	#Si la hora de inicio de $s0 es menor que la del puntero $t9, los valores quedan iguales
+	blt	$t2,$t9,_cdpEnd
+	
+	#En caso contrario, $s0 es el valor de $s1 y se asigna $s0 con su dirección anterior
+	move	$s1,$s0
+	lw	$s0,($s0)
+	
+_cdpEnd:
+	#Si el puntero está en un bloque, hay que actualizarlo para moverlo a la hora inicial
+	jal	fixHoraPrev
+
+subiu	$sp,$sp,4
+lw	$ra,($sp)
+jr	$ra		

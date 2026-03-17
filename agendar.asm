@@ -75,13 +75,14 @@ _agendarDuracion:
 	
 _agendarCheckSolapamiento:
 
-	#Chequea que la hora de finalización no solape con una cita mas tarde
+	#Chequea que la hora de finalización no solape con una cita mas tarde en el mismo día
 	beqz	$s2,_agendarCrearCita
 	lb	$t7,8($s2)
+	bne	$t7,$s3,_agendarCrearCita
+	lb	$t7,9($s2)
 	bge	$t8,$t7,errorAgendar
 		
 _agendarCrearCita:
-
 	#Se crea una cita en la lista enlazada con 45 bytes, de manera que:
 	# Pos 0-3: Los primeros 4 bytes son un apuntador a la cita anterior (o 0 si no hay anterior)
 	# Pos 4-7: Los siguientes 4 bytes son un apuntador a la cita siguiente (o 0 si no hay siguiente)
@@ -137,7 +138,7 @@ linkearSiguienteLista:
 	sw	$s2,4($s1)
 	#Si $s2 es 0, significa que no hay elemento siguiente en la lista.
 	beqz	$s2,_lslContinuar
-	sw	$a1,($s2)
+	sw	$s1,($s2)
 _lslContinuar:
 	jr	$ra
 

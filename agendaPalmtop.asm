@@ -72,4 +72,3 @@ li	$t6,-1
 li	$t7,-1
 jal	printMenu
 j	funcionInput
-
