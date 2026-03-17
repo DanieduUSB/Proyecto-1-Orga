@@ -622,22 +622,6 @@ medioMenuConfirmar:
 	beq	$t0,12,_mmcmm
 
 _mmcam:
-	beq	$t9,$a2,_mmcamAsterisco
-	slti	$a1,$t0,10
-	jal	printEspacio
-	
-	move	$a0,$t0
-	li	$v0,1
-	syscall	#print_int
-	
-	jal	printAM
-	
-	li	$a1,1
-	jal	printEspacio
-	
-	j	_mmcContinuar
-
-_mmcamAsterisco:
 	slti	$a1,$t0,10
 	jal	printAsterisco
 	
@@ -653,20 +637,6 @@ _mmcamAsterisco:
 	j	_mmcContinuar
 
 _mmcmm:
-	beq	$t9,$a2,_mmcmmAsterisco
-	
-	move	$a0,$t0
-	li	$v0,1
-	syscall	#print_int
-	
-	jal	printPM
-	
-	li	$a1,1
-	jal	printEspacio
-	
-	j	_mmcContinuar
-
-_mmcmmAsterisco:
 	move	$a0,$t0
 	li	$v0,1
 	syscall	#print_int
@@ -680,23 +650,6 @@ _mmcmmAsterisco:
 
 _mmcpm:
 	subi	$t0,$t0,12
-	beq	$t9,$a2,_mmcpmAsterisco
-	
-	li	$a1,1
-	jal	printEspacio
-	
-	move	$a0,$t0
-	li	$v0,1
-	syscall	#print_int
-	
-	jal	printPM
-	
-	li	$a1,1
-	jal	printEspacio
-	
-	j	_mmcContinuar
-
-_mmcpmAsterisco:
 	li	$a1,1
 	jal	printAsterisco
 	
