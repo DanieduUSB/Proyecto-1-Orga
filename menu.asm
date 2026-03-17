@@ -677,12 +677,13 @@ jr	$ra
 printMedioMenu:
 sw	$ra,($sp)
 addiu	$sp,$sp,4
-
-	#Elige en qué caso cae la cita actual correspondiente
-	jal	buscarCitaPrint
 	
 	beq	$a2,$t5,medioMenuConfirmar
 	beq	$a2,$t6,medioMenuCrearCita
+	
+	#Elige en qué caso cae la cita actual correspondiente
+	jal	buscarCitaPrint
+	
 	beq	$a2,$t7,medioMenuDuracion
 	
 	beq	$a3,0,medioMenu0
