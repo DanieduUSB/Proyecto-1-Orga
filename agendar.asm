@@ -1,9 +1,9 @@
-#######################################
-# 	     agendar.asm	      #
-# Esto probablemente debería estar en acciones.asm, veremos #
-#	Daniel Quijada (20-10518)     #
-#      Daniela Gragirena (19-10543)   #
-#######################################
+#####################################
+# 	    agendar.asm		    #
+# Agendar/Borrar citas del programa #
+#     Daniel Quijada (20-10518)     #
+#    Daniela Gragirena (19-10543)   #
+#####################################
 
 #Maneja todo lo relacionado con la lógica al momento de agendar una entrada dada por el usuario.
 agendar:
@@ -11,7 +11,8 @@ agendar:
 	bnez	$s1,errorAgendar
 	
 	#Establece en $t6 la línea en la cual aparece la entrada introducida y en $t7 la línea en la cual debe preguntar al
-	# usuario si quiere establecer duración
+	# usuario si quiere establecer duración. Si el puntero está sobre las 9pm, omite esta pregunta
+	beq	$t9,15,_agendarCrearCita
 	move	$t6,$t9
 	addi	$t7,$t9,1
 	jal	printMenu
@@ -20,9 +21,7 @@ agendar:
 	
 	#Se utiliza $t8 para marcar la hora final de la cita
 	move	$t8,$t9
-	
-	#Confirmación para la duración. Si la duración sobrepasa las 9pm, omite esta pregunta
-	beq	$t9,15,_agendarCrearCita
+
 _agendarConfirmar:
 	li	$v0,12
 	syscall	#read_char
@@ -207,6 +206,8 @@ _bcBorrar:
 	
 	#Cambia los apuntadores de $s0 y $s2 para que se apunten entre ellos (en caso de que existan)
 	bnez	$s0,_bcApuntadorS0
+	#Si $s0 es 0, $s1 es la cabeza de la lista, por lo que establece a $s2 como la nueva cabeza
+	sw	$s2,citas
 	bnez	$s2,_bcApuntadorS2
 	j	_bcEnd
 	

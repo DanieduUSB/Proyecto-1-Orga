@@ -66,9 +66,23 @@ main:
 jal	cargarMeses
 jal	fechaActual
 
+#Inicia el programa en sí
 programa:
 li	$t5,-1
 li	$t6,-1
 li	$t7,-1
+bgt	$s3,365,limitar365Pos
+blt	$s3,-365,limitar365Neg
 jal	printMenu
 j	funcionInput
+
+#Si la cantidad de días desde el día 0 es mayor a 365, la asigna como 365 para limitar hasta que fecha se puede mover en la agenda
+limitar365Pos:
+	li	$s3,365
+	j	programa
+	
+#Si la cantidad de días desde el día 0 es menor a -365, la asigna como -365 para limitar hasta que fecha se puede mover en la agenda
+limitar365Neg:
+	li	$s3,-365
+	j	programa
+	

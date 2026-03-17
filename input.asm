@@ -30,6 +30,16 @@ _fiLeerInput:
 	jal	printSaltoLinea
 	jal	arreglarInput
 	
+	#Si el número de bytes del string en inputAux es 0, se introdujo un string vacío, por lo que el programa vuelve a pedir
+	# una entrada
+	lb	$t0,inputAux+16
+	bnez	$t0,_fiInterpretar
+	jal	printDolar
+	li	$a1,1
+	jal	printEspacio
+	j	_fiLeerInput
+	
+_fiInterpretar:
 	#$t3 es el iterador y $t0 almacena el byte a verificar
 	li	$t3,0
 	lb	$t0,input
