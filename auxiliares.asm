@@ -278,6 +278,8 @@ buscarCitaPrint:
 	#Si $k0==0, no hay citas en el día actual seleccionado, por lo que se cae en el caso 5
 	beqz	$k0,_bcpCaso5
 	
+	#Si hay citas en el día actual, buscamos una cita tal que su hora inicial sea mayor o igual a la hora considerada en $a2,
+	# o hasta que lleguemos a la última cita del día
 	move	$v1,$k0
 	lb	$t0,9($v1)
 _bcpLoop:	beq	$v1,$k1,_bcpEndLoop
@@ -462,8 +464,10 @@ _acdbEnd:
 
 #Verifica si está parado en una cita para borrarla, en caso afirmativo, borra la cita, en caso contrario, lanza un error
 borrarCitaCheck:
+	#Si $s1 != 0, hay una cita en la posición actual, por lo que hay que borrarla
 	bnez	$s1,borrarCita
 	
+	#En caso contrario, se imprime un error y el programa vuelve al menú principal
 	jal	printDolar
 	li	$a1,1
 	jal	printEspacio
@@ -479,7 +483,7 @@ borrarCitaCheck:
 #Actualiza los registros $s0, $s1 y $s2 que contienen la cita anterior, la actual y la siguiente, respectivamente, para la acción
 # de mover hacia una hora posterior (Aumentar el valor de $t9)
 citaHoraSig:
-	#Si $s1 es 0, antes de mover el cursor no se estaba parado sobre una cita, por lo que verifica si la siguiente posición
+	#Si $s1 es 0, antes de mover el cursor no se estaba parado sobre una cita, por lo que verifica si la nueva posición
 	# está parada sobre una cita
 	beqz	$s1,_chsCheckSiguiente
 	
@@ -516,7 +520,7 @@ _chsEnd:
 #Actualiza los registros $s0, $s1 y $s2 que contienen la cita anterior, la actual y la siguiente, respectivamente, para la acción
 # de mover hacia una hora previa (Disminuir el valor de $t9)
 citaHoraPrev:
-	#Si $s1 es 0, antes de mover el cursor no se estaba parado sobre una cita, por lo que verifica si la posición anterior
+	#Si $s1 es 0, antes de mover el cursor no se estaba parado sobre una cita, por lo que verifica si la nueva posición
 	# está parada sobre una cita
 	beqz	$s1,_chpCheckAnterior
 	
