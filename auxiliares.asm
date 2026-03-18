@@ -162,8 +162,6 @@ jr	$ra
 
 #Calcula el identificador del día actual y lo almacena en $t4
 diaAct:
-sw	$ra,($sp)
-addiu	$sp,$sp,4
 	#Se calcula el día actual en base al día lunes
 	li	$t1,7
 	div	$s3,$t1
@@ -179,15 +177,10 @@ seguir:
 	subi	$t4,$t4,7
 	
 endDiaAct:
-subiu	$sp,$sp,4
-lw	$ra,($sp)
 jr	$ra
 
 #Calcula el número de días del mes del día actual y lo almacena en $t7, almacena el día actual en $t5
-mdActual:
-sw	$ra,($sp)
-addiu	$sp,$sp,4
-	
+mdActual:	
 	mul 	$t1,$s6,4
 	lw	$t7,meses($t1)
 	lb	$t7,1($t7)
@@ -248,19 +241,12 @@ addiu	$sp,$sp,4
 	bgez	$t5,endMdActual
 	
 endMdActual:
-subiu	$sp,$sp,4
-lw	$ra,($sp)
 jr	$ra
 
 verifChar:
-	sw	$ra,($sp)
-	addiu	$sp,$sp,4
-	
 	addi	$t3,$t3,1
 	lb	$t0,input($t3)
 endVerifChar:
-subiu	$sp,$sp,4
-lw	$ra,($sp)
 jr	$ra
 
 #Busca una cita, si existe, que corresponda al día de la agenda y a la hora indicada en $a2 (Considerando que 0=6am, 1=7am, ..,

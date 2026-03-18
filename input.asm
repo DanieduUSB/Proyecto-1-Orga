@@ -84,7 +84,6 @@ _fiInterpretar:
 		jal	verifChar
 		beq	$t0,0x5e,horaPrevLoop
 	endHoraPrevLoop:
-		jal	verifChar
 		beqz	$t0,horaPrev
 		j	agendar
 	
@@ -94,7 +93,6 @@ _fiInterpretar:
 		jal	verifChar
 		beq	$t0,0x76,horaSigLoop
 	endHoraSigLoop:
-		jal	verifChar
 		beqz	$t0,horaSig
 		j	agendar
 		

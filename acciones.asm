@@ -256,7 +256,7 @@ _contPrev:
 	sub	$t2,$t5,$t7
 	blez	$t2,endMesPrev
 	
-	#Se suma al día actual el número de días del mes anterior
+	#Se suma al día actual la diferencia entre el día actual y el número de días del mes anterior
 	add	$s3,$s3,$t2
 	
 	j	endMesPrev
